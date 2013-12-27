@@ -1,0 +1,210 @@
+#!/bin/bash
+
+#------------------------------- Define the functions -----------------------------------#
+
+# Get the accounts NGINX config file and open it using nano
+function config {
+	echo "Alright, let's get the Config File!"
+		scp root@$account.wpengine.com:/nas/wp/conf/lb/sites/$account.conf $account.conf
+		nano $account.conf
+	exit
+}
+
+# Login
+function login {
+	envir
+	echo "Alright, logging into the $envir Server"
+		ssh -t root@$account.wpengine.com "cd /nas/wp/www/$envir/$account ; bash"
+	exit
+}
+
+# Get a file
+function get {
+	envir
+	if [[ -n $frth ]] && [[ -n $fth ]]; then
+		dir=$frth
+		file=$fth
+	elif [[ -n $frth ]] && [[ -z $fth ]]; then
+		dir=$frth
+		echo -n "Where do you want it local? "
+		read file
+	else
+		echo "Getting the file from the $envir Server"
+		echo -n "Path to file? "
+		read dir
+		echo -n "Where do you want it local? "
+		read file
+	fi
+		scp -r root@$account.wpengine.com:/nas/wp/www/$envir/$account/$dir $file
+		if [[ $file = *.sql ]] || [[ $file = *.tar ]]; then 
+			exit
+		else
+			nano $file
+		fi
+		exit
+}
+
+# Put a file
+function put {
+	envir
+	if [[ -n $frth ]] && [[ -n $fth ]]; then
+		file=$frth
+		dir=$fth
+	elif [[ -n $frth ]] && [[ -z $fth ]]; then
+		file=$frth
+		echo -n "Where do you want it on the server? "
+		read dir
+	else
+		echo "Putting the File on the $envir Server"
+		echo -n "Where is the file? "
+		read file
+		echo -n "Where do you want it on the server? "
+		read dir
+	fi
+		scp -r $file root@$account.wpengine.com:/nas/wp/www/$envir/$account/$dir
+		exit
+}
+
+# Make a .tar of /wp-content folder on production
+function tar {
+		ssh -t root@$account.wpengine.com "cd ~$account/_wpeprivate && tar -cvf $account-wp-content.tar ../wp-content/* && exit ; bash"
+		echo -n "Would you like to Download this .tar? Yes or No "
+		read down
+			if [[ $down = y* ]]; then
+				scp root@$account.wpengine.com:/nas/wp/www/sites/$account/_wpeprivate/$account-wp-content.tar $account-wp-content.tar 
+				#tar -xvf $account-wp-content.tar && thunar $account/wp-content  #Runs local and opens file
+				exit
+			elif [[ $down = n* ]]; then
+				exit
+			fi
+}
+
+# Uncancel the site
+function uncan {
+	ssh -t root@$account.wpengine.com "/nas/wp/ec2/cluster uncancel-site $account && exit ; bash"
+		exit
+}
+
+# Clear the Rewrite Rules
+function rewrite {
+	ssh -t root@$account.wpengine.com "php /nas/wp/www/tools/wpe.php option-set $account rewrites NULL && exit ; bash"
+		exit
+}
+
+#-----------------------Functions for this scripts function ----------------------#
+#Determine the Working Environment
+function envir {
+if [[ -n $thrd ]]; then
+	if [[ $thrd = -p ]]; then
+		envir=sites
+	elif [[ $thrd = -s ]]; then
+		envir=staging
+	else
+		echo -n "Is this the Production or the Staging Server? "
+	    read env
+		if [[ $env = p* ]] || [[ $env = -p ]]; then
+			envir=sites
+		elif [[ $env = s* ]] || [[ $env = -s ]]; then
+			envir=staging
+		fi
+	fi
+elif [[ -z $thrd ]]; then
+	echo -n "Is this the Production or the Staging Server? "
+	read env
+		if [[ $env = p* ]] || [[ $env = -p ]]; then
+			envir=sites
+		elif [[ $env = s* ]] || [[ $env = -s ]]; then
+			envir=staging
+		fi
+fi
+}
+
+# Get the Account name when needed
+function acnt {
+	echo -n "What is the account name we will be working with? "
+	read account
+}
+
+#List the options
+function dyn {
+	echo "1: Login to SSH (-l)"
+	echo "2: Get Something (-g)"
+	echo "3: Put Something (-p)"
+	echo "4: Purge the Rewrite Rules (-r)"
+	echo "5: Uncancel a Site (-u)"
+	echo "6: Tar the /wp-content directory (-t)"
+	echo "7: Get the NGINX Config file (-c)"
+	echo -n "What would you like to do? "
+	read action
+	## Dynamic Actions
+	if	[[ $action = 1 ]] || [[ $action = l* ]] || [[ $action = -l ]]; then
+		login
+	elif [[ $action = 2 ]] || [[ $action = g* ]] || [[ $action = -g ]]; then
+		get
+	elif [[ $action = 3 ]] || [[ $action = p* ]] || [[ $action = -p ]]; then
+		put
+	elif [[ $action = 4 ]] || [[ $action = r* ]] || [[ $action = -r ]]; then
+		rewrite
+	elif [[ $action = 5 ]] || [[ $action = u* ]] || [[ $action = -u ]]; then
+		uncan
+	elif [[ $action = 6 ]] || [[ $action = t* ]] || [[ $action = -t ]]; then
+		tar
+	elif [[ $action = 7 ]] || [[ $action = c* ]] || [[ $action = -c ]]; then
+		config
+	fi
+}
+
+## If Args are static
+
+# Available Args are as follows:
+# -l  1: Login to SSH
+# -g  2: Get Something
+# -p  3: Put Something
+# -r  4: Purge the Rewrite Rules
+# -u  5: Uncancel a Site
+# -t  6: Tar the /wp-content directory
+# -c  7: Get the NGINX Config file
+
+function static {
+	if [[ $scnd = -l ]]; then
+		login
+	elif [[ $scnd = -g ]]; then
+		get
+	elif [[ $scnd = -p ]]; then
+		put
+	elif [[ $scnd = -r ]]; then
+		rewrite
+	elif [[ $scnd = -u ]]; then
+		uncan
+	elif [[ $scnd = -t ]]; then
+		tar
+	elif [[ $scnd = -c ]]; then
+		config
+	fi
+}
+
+
+#---------------- Run it! ------------------------#
+
+
+if [[ $1 = -* ]]; then 
+	scnd=$1
+	thrd=$2
+	frth=$3
+	fth=$4
+	acnt
+	static
+elif [[ -n $1 ]] && [[ -n $2 ]]; then
+	account=$1
+	scnd=$2
+	thrd=$3
+	frth=$4
+	fth=$5
+	static
+elif [[ -n $1 ]] && [[ -z $2 ]]; then
+	account=$1
+	dyn
+elif [[ -z $1 ]]; then
+	acnt
+	dyn
+fi
