@@ -1,0 +1,227 @@
+#!/bin/bash
+
+#Author: BMO and ElCapitan
+#Version: 1.2
+# 1.2 -- Better Mac and "sed" compatibilty
+# 1.2 -- Removed the need for sudo with local commands
+
+
+#################### FUNCTIONS ####################
+#---------------------------------------------------------------------------------------------#
+#Description: Grab occurrences of all ${err} HTTP codes in an account's logs.
+#Usage l2 www-codes <account> <error code>
+function www_codes {
+if [[ -z ${three} ]]; then
+	echo -e "What HTTP Code would you like to search for?\n"
+	read -r err
+else
+	err=${three}
+fi
+echo -e "\n\nDescription: Grab occurrences of all ${err} HTTP codes in an account's logs."
+ssh -tq ${uname}@${acct}.wpengine.com "sudo cat /var/log/nginx/${acct}.access.log > /home/${uname}/${acct}.${epoch}.nginx && sudo cat /var/log/apache2/${acct}.access.log > /home/${uname}/${acct}.${epoch}.apache && exit ; bash"
+scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.nginx ${acct}.${epoch}.nginx && scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.apache ${acct}.${epoch}.apache
+for nglog in ${acct}.${epoch}.nginx
+	do echo -e ${br}${nglog}
+		awk -F\| -v code=${err} '{if ($5 ~ code) printf "IP: %s Code: %s Referrer: %s Request: %s\n",$3,$5,$7,$10}' ${nglog}| sort| uniq -c| sort -nk1| tail
+	done
+for apachelog in ${acct}.${epoch}.apache
+	do echo -e ${br}${apachelog}
+		awk -v code=${err} '{if ($9 ~ code) printf "IP: %s Code: %s Referrer: %s Request: %s %s %s\n",$1,$9,$11,$6,$7,$8}' ${apachelog}| sort| uniq -c| sort -nk1| tail
+	done
+echo -e ${br}
+ssh -tq ${uname}@${acct}.wpengine.com "rm ${acct}.${epoch}.nginx ${acct}.${epoch}.apache && exit ; bash" && rm ${acct}.${epoch}.nginx ${acct}.${epoch}.apache
+}
+#---------------------------------------------------------------------------------------------#
+
+#Description: Used to touch a file that is 404'ing in an account repeatedly.
+#Usage l2 tfile <account> <file name>
+function tfile { 
+if [[ -z ${three} ]]; then
+	echo -e "What File would you like to touch? (Absolute Path required)\n"
+	read -r file
+else
+	file=${three}
+fi
+ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/sites/${acct} && [[ -f ${file} ]] || touch ./${file} && sudo /nas/wp/admin fixperms ${acct} && exit ; bash"
+}
+#---------------------------------------------------------------------------------------------#
+
+#Description: Output lines to migrate every account associated with another account, including parent and children.
+#Usage l2 mig-all <account> <Destination Pod>
+function mig_all {
+if [[ -z ${three} ]]; then
+		echo -e "What Pod are you moving to?\n"
+		read -r dest_pod
+else
+	dest_pod=${three}
+fi
+echo -e "\n\nDescription: Output lines to migrate every account associated with another account, including parent and children."
+ssh -tq ${uname}@${acct}.wpengine.com "sudo /nas/wp/ec2/cluster parent-child ${acct} > /home/${uname}/result.${epoch}.txt && hostname | cut -d- -f2 > /home/${uname}/host.${epoch}.txt && exit ; bash"
+scp -q ${uname}@${acct}.wpengine.com:/home/${uname}/result.${epoch}.txt result.${epoch}.txt && scp -q ${uname}@${acct}.wpengine.com:/home/${uname}/host.${epoch}.txt host.${epoch}.txt
+cur_pod=$(cat host.${epoch}.txt)
+echo -e ${br}"\n"
+echo -e $(cat result.txt | sed 's/ /\\n/g') | 
+while read
+do echo -e "sudo /nas/wp/ec2/cluster move-to-preferred-cluster ${cur_pod} ${REPLY} ${dest_pod}"
+done
+echo -e "\n${br}"
+ssh -tq ${uname}@${acct}.wpengine.com "rm result.${epoch}.txt host.${epoch}.txt && exit ; bash" && rm result.${epoch}.txt host.${epoch}.txt
+}
+#---------------------------------------------------------------------------------------------#
+
+
+#ng_logs - show log hits from nginx that took the longest time to complete.
+# Usage L2 ng-logs <account>
+function ng_logs { 
+ssh -tq ${uname}@${acct}.wpengine.com "sudo cat /var/log/nginx/${acct}.access.log > /home/${uname}/${acct}.${epoch}.nginx && exit ; bash"
+scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.nginx ${acct}.${epoch}.nginx
+echo -e "\nLog lines below are sorted by Page Load Time (8th | delimited column).\n${br}\nSlow requests that did NOT receive a 200 OK HTTP Status Code.\n"
+awk '!/\|200\|/' ${acct}.${epoch}.nginx| sort -t\| -nk8| tail && echo -e "\n${br}\nSlow requests that received 200 OK HTTP Status Code.\n"
+awk '/\|200\|/' ${acct}.${epoch}.nginx| sort -t\| -nk8| tail
+echo -e "${br}\n"
+ssh -tq ${uname}@${acct}.wpengine.com "rm ${acct}.${epoch}.nginx && exit ; bash" && rm ${acct}.${epoch}.nginx
+}
+#---------------------------------------------------------------------------------------------#
+
+
+#sql_slow - show problematic sql infos.
+#usage l2 sql-slow <account>
+function sql_slow { 
+echo -e "\n"${br}"\nSlow users and their log hit counts: \n"
+ssh -tq ${uname}@${acct}.wpengine.com "sudo awk '/User@Host/ {print $3}' /var/log/mysql/mysql-slow.log| cut -d\[ -f1| sort| uniq -c| sort -nk1| tail -10 && exit ; bash"
+echo -e ${br}"\n PHP line number log hits: \n"
+ssh -tq ${uname}@${acct}.wpengine.com "sudo grep -oP '(?<=\[\/nas\/wp\/www\/cluster\-).*(?=\])' /var/log/mysql/mysql-slow.log| sort| uniq -c| sort -nk1| tail -10 && exit ; bash"
+echo -e ${br}"\nHeavy SQL Tables based on table size vs. table rows: \n"
+ssh -tq ${uname}@${acct}.wpengine.com "sudo mysql -e \"select concat(table_schema, '.', table_name), concat(round(table_rows / 1000000, 2), 'M') rows, concat(round(data_length / ( 1024 * 1024 * 1024 ), 2), 'G') DATA, concat(round(index_length / ( 1024 * 1024 * 1024 ), 2), 'G') idx, concat(round(( data_length + index_length ) / ( 1024 * 1024 * 1024 ), 2), 'G') total_size, round(index_length / data_length, 2) idxfrac from information_schema.TABLES ORDER by data_length + index_length DESC limit 10;\" && exit ; bash"
+echo -e ${br}
+}
+#---------------------------------------------------------------------------------------------#
+
+#sql_heavy_rows - show which tables have over 5000 rows for an account.
+#Usage l2 sql-heavey-rows <account>
+function sql_heavy_rows {
+echo -e "\n"${br}"\nAccount: "${acct}"\nDatabase: wp_"${acct}"\n"${br}
+ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/sites/${acct} && sudo mysql wp_${acct} -e 'show table status where rows > 5000;'| awk '{print \$1,\$5 }'| sort -nk2| column -t && exit ; bash"
+echo -e ${br}"\n"
+}
+#---------------------------------------------------------------------------------------------#
+
+# show load that was 1.5x the number of processer cores.
+# Usage l2 hiload <account> <DD>
+function hiload { 
+if [[ -z ${three} ]]; then
+	echo -e "Which Day? "
+	read day
+else
+	day=${three}
+fi
+echo -e "\n\nDescription: Show times when load was over 1.5x the number of processor cores for this server."
+echo -e ${br}"\n"
+ssh -tq ${uname}@${acct}.wpengine.com "if [[ ! -f /var/log/sysstat/sa${day} ]]; then echo -e \"\nToo Far Back, try again\"; else sudo sar -q -f /var/log/sysstat/sa${day}| awk -vcpu=$(grep ^processor /proc/cpuinfo| wc -l) '{if (\$5 > (1.5 * cpu)) print}'; fi && exit ; bash"
+echo -e "\n${br}"
+}
+#---------------------------------------------------------------------------------------------#
+
+#wp_plugins - show enabled plugins for an account.
+#Usage l2 wp-plugins <account>
+function wp_plugins {
+ssh -tq ${uname}@${acct}.wpengine.com "sudo -v && sudo grep \"table_prefix\" /nas/wp/www/sites/${acct}/wp-config.php > /home/${uname}/pf.${epoch}.txt && exit ; bash"
+scp -q ${uname}@${acct}.wpengine.com:/home/${uname}/pf.${epoch}.txt pf.${epoch}.txt
+pf=$(awk 'tolower($0) ~ /^\$table_prefix/ {gsub(/\"|;|'"'"'/,""); print $3}' pf.${epoch}.txt)
+db=wp_${acct}
+echo -e "\n"${br}"\nEnabled plugins for account "${acct}": \n"
+ssh -tq ${uname}@${acct}.wpengine.com "sudo mysql ${db} -e \"select * from ${pf}options where option_name='active_plugins';\"| tr '\"' '\n'| awk -F\/ '/^[a-zA-Z]/ {print \$1}'| sed 1d && exit ; bash"
+echo -e ${br}"\n"
+ssh -tq ${uname}@${acct}.wpengine.com "rm pf.${epoch}.txt && exit ; bash" && rm pf.${epoch}.txt
+}
+#---------------------------------------------------------------------------------------------#
+
+#################### USER NAME ####################
+
+function setuname {
+	if [[ -z ${uname} ]]; then
+		echo -e "\nYou've not set a User Name!!\nWhat is your SSH User Name? "
+		read -r name
+			sed -ie "s/^uname=/uname=${name}/g" ${0}
+	else
+		setname=$(awk '/^uname=/' ${0})
+		echo -e "\nYou've already set a User Name silly.\n --> ${setname}\n"
+	fi
+}
+uname=
+
+#################### MENU ####################
+
+function menu {
+while [[ -z ${opt} ]]; do
+	echo -n "What Account is this for? "
+	read -r acct
+	echo -e "${br}\nHere is what you can do\n"
+	echo -e "1: www-codes => Description: Grab occurrences of a certain HTTP code in an account's logs."
+	echo -e "2: tfile => Description: Grab occurrences of a certain HTTP code in an account's logs."
+	echo -e "3: mig-all => Description: Grab occurrences of a certain HTTP code in an account's logs."
+	echo -e "4: ng-logs => Description: Grab occurrences of a certain HTTP code in an account's logs."
+	echo -e "5: sql-slow => Description: Grab occurrences of a certain HTTP code in an account's logs."
+	echo -e "6: sql-heavy-rows => Description: Grab occurrences of a certain HTTP code in an account's logs."
+	echo -e "7: hiload => Description: Grab occurrences of a certain HTTP code in an account's logs."
+	echo -e "8: wp-plugins => Description: Grab occurrences of a certain HTTP code in an account's logs."
+	echo -e ${br}
+	echo -e "Pick a Number, or Type out the Function\n"
+	read -r opt
+if [[ ${opt} = 1 ]] || [[ ${opt} = www-codes ]]; then
+		www_codes
+elif [[ ${opt} = 2 ]] || [[ ${opt} = tfile ]]; then
+		www_codes
+elif [[ ${opt} = 3 ]] || [[ ${opt} = mig-all ]]; then
+		www_codes
+elif [[ ${opt} = 4 ]] || [[ ${opt} = ng-logs ]]; then
+		www_codes
+elif [[ ${opt} = 5 ]] || [[ ${opt} = sql-slow ]]; then
+		www_codes
+elif [[ ${opt} = 6 ]] || [[ ${opt} = sql-heavy-rows ]]; then
+		www_codes
+elif [[ ${opt} = 7 ]] || [[ ${opt} = hiload ]]; then
+		www_codes
+elif [[ ${opt} = 8 ]] || [[ ${opt} = wp-plugins ]]; then
+		www_codes
+else
+	echo -e "${opt}\nYou Didn't do it right! Try again.\n"
+	opt=
+fi
+done
+}
+
+#################### RUN IT ####################
+
+acct=${2}
+three=${3}
+four=${4}
+br="++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+epoch=$(date +%s)
+if [[ -z ${uname} ]]; then
+	setuname
+else
+	if [[ ${1} = www-codes ]]; then
+		www_codes
+	elif [[ ${1} = tfile ]]; then
+		tfile
+	elif [[ ${1} = mig-all ]]; then
+		mig_all
+	elif [[ ${1} = ng-logs ]]; then
+		ng_logs
+	elif [[ ${1} = sql-slow ]]; then
+		sql_slow
+	elif [[ ${1} = sql-heavy-rows ]]; then
+		sql_heavy_rows
+	elif [[ ${1} = hiload ]]; then
+		hiload
+	elif [[ ${1} = wp-plugins ]]; then
+		wp_plugins
+	elif [[ ${1} = uname ]]; then
+		setuname
+	else
+		echo -e "\nOh Noes!! You didn't select a Function and/or Account Name!\n"
+		menu
+	fi
+fi
+#---------------------------------------------------------------------------------------------#

@@ -1,0 +1,6 @@
+#!/bin/sh
+
+scp root@$1.wpengine.com:/nas/wp/www/sites/$1/$2 $2
+
+
+prod () {

@@ -1,0 +1,94 @@
+
+#################### STILL NEED TO SORT OUT ####################
+---------------------------------------------------------------------------------------------
+
+logstalgia - show log visualization.  requires that you install logstalgia on your machine locally and runs from your machine locally.
+lstalgia() { pod=$1; user=$2; ssh jmorgan_@pod-${pod}.wpengine.com sudo tail -f /var/log/nginx/${user}.apachestyle.log| logstalgia --sync; }; lstalgia
+---------------------------------------------------------------------------------------------
+
+inodes - count inode break down for folders.
+inodes() { find -maxdepth 1 -type d |while read dir ; do echo -en "$dir :::: " ; find "$dir" |wc -l; done|sed 's/^.\///'|sort -t: -rnk5|head -n10|column -ts::::; }; inodes
+---------------------------------------------------------------------------------------------
+
+function query { sudo -v; cfg=wp-config.php; pf=$(awk 'tolower($0) ~ /^\$table_prefix/ {gsub(/\"|;|'"'"'/,""); print $3}' ./${cfg}); db=$(awk -F\' '/^define.*DB_NAME/ {print $4}' ${cfg}); echo -e "\nConfig: "${cfg}"\nTable Prefix: "${pf}"\nDatabase: "${db}"\n\n"; echo -e "Spam Posts: "$(sudo mysql ${db} -e "SELECT COUNT(*) as row_count FROM "${pf}"comments WHERE comment_approved = 'spam' \G;"| awk '{if ($1 ~ /[a-zA-Z]/) print $2}')| grep -vE \ 0$; echo -e "Trashed Posts: "$(sudo mysql ${db} -e "SELECT COUNT(*) as row_count FROM "${pf}"posts WHERE post_type = 'trash' \G;"| awk '{if ($1 ~ /[a-zA-Z]/) print $2}')| grep -vE \ 0$; echo -e "Trashed Comments: "$(sudo mysql ${db} -e "SELECT COUNT(*) as row_count FROM "${pf}"comments WHERE comment_approved = 'trash'
+ \G;"| awk '{if ($1 ~ /[a-zA-Z]/) print $2}')| grep -vE \ 0$; echo -e "Orphaned Postmeta: "$(sudo mysql ${db} -e "SELECT COUNT(pm.meta_id) as row_count FROM "${pf}"postmeta pm LEFT JOIN "${pf}"posts wp ON wp.ID = pm.post_id WHERE wp.ID IS NULL \G;"| awk '{if ($1 ~ /[a-zA-Z]/) print $2}')"\nsudo mysql "${db}" -e \"delete pm from "${pf}"postmeta pm left join "${pf}"posts wp on wp.ID = pm.post_id where wp.ID is NULL;\""| grep -vE \ 0$; echo -e "Orphaned Commentmeta: "$(sudo mysql ${db} -e "SELECT COUNT(*) as row_count FROM "${pf}"commentmeta WHERE comment_id NOT IN (SELECT comment_id FROM "${pf}"comments) \G;"| awk '{if ($1 ~ /[a-zA-Z]/) print $2}')| grep -vE \ 0$; echo -e "Transients 1: "$(sudo mysql ${db} -e "SELECT COUNT(*) as row_count FROM "${pf}"options WHERE option_name LIKE ('_transient_%') \G;"| awk '{if ($1 ~ /[a-zA-Z]/) print $2}')| grep -vE \ 0$; echo -e "Transients 2: "$(sudo mysql ${db} -e "SELECT COUNT(*) as row_count FROM "${pf}"options WHERE option_name LIKE ('_site_transient_%') \G;"| awk '{if ($1 ~ /[a-zA-Z]/) print $2}')| grep -vE \ 0$; echo -e "Orphaned Term Relationships: "$(sudo mysql ${db} -e "SELECT COUNT(tr.object_id) as row_count FROM "${pf}"term_relationships tr INNER JOIN "${pf}"term_taxonomy tt ON (tr.term_taxonomy_id = tt.term_taxonomy_id) WHERE tt.taxonomy != 'link_category' AND tr.object_id NOT IN (SELECT ID FROM "${pf}"posts) \G;"| awk '{if ($1 ~ /[a-zA-Z]/) print $2}')| grep -vE \ 0$; echo -e "Limit_login_lockouts: "$(sudo mysql ${db} -e "SELECT option_value as row_count FROM "${pf}"options WHERE option_name = 'limit_login_lockouts' \G;"| awk '{if ($1 ~ /[a-zA-Z]/) print $2}'| cut -d: -f2| grep -vE \ 0$)"\nsudo mysql ${db} -e \"update ${pf}options set option_value='' where option_name = 'limit_login_lockouts';\""| grep -vE \ 0$; echo; }
+---------------------------------------------------------------------------------------------
+
+function screen { }
+---------------------------------------------------------------------------------------------
+
+write a man page
+---------------------------------------------------------------------------------------------
+
+rework login/account function
+---------------------------------------------------------------------------------------------
+
+#Description: Shows total account size for a parent and children.
+#Usage: l2 acct-size <acct_name>
+#function acct_size {
+#acct=${one}
+#ssh -tq bmoore_@${acct}.wpengine.com "sudo -v && sudo /nas/wp/ec2/cluster parent-child ${acct} > /home/bmoore_/size.txt && sudo du -s /nas/wp/www/sites/${acct} >> /home/bmoore_/size.txt && sudo du -s /var/lib/mysql/wp_${acct} >> /home/bmoore_/size.txt && exit ; bash"
+#scp -q bmoore_@${acct}.wpengine.com:/home/bmoore_/size.txt size.txt
+#ssh -tq bmoore_@${acct}.wpengine.com "sudo du -s /nas/wp/www/sites/${acct}| sudo awk '{printf \"%.2f\",\$1/1024}') >> size.txt && sudo du -s /var/lib/mysql/wp_${acct}| sudo awk '{printf \"%.2f\",\$1/1024}') >> size.txt && exit ; bash"
+#dbb="$(sudo du -s /var/lib/mysql/wp_${REPLY}| sudo awk '{printf "%.2f",$1/1024}')"
+#installb=$(sed 2p size.txt| awk '{printf "%.2f",$1/1024}')
+#dbb=$(sed 3p size.txt| sudo awk '{printf "%.2f",$1/1024}')
+#total="$(echo ${installb}+${dbb}| bc)"
+#echo -e $(cat size.txt| sed 's/ /\\n/g')| while read; do
+#echo -e "Total Size: ${total}M Parent: ${acct} Child: ${REPLY} Install: ${installb}M DB: ${dbb}M\n"
+#done 2>&1| sed '/^$/d'| sort -rnk3
+#}
+#one=$1
+#two=$2
+#acct_size
+
+function acct_size {
+acct=${one}
+ssh -tq bmoore_@${acct}.wpengine.com "sudo -v && sudo /nas/wp/ec2/cluster parent-child ${acct} > /home/bmoore_/size.txt && exit ; bash"
+scp -q bmoore_@${acct}.wpengine.com:/home/bmoore_/size.txt size.txt
+echo -e  $(cat size.txt| sed 's/ /\\n/g')| while read; do 
+installb=$(ssh -t bmoore_@${acct}.wpengine.com "[[ -d /nas/wp/www/sites/${REPLY} ]] && sudo du -s /nas/wp/www/sites/${REPLY} | awk '{printf \"%.2f\",\$1/1024}' > /home/bmoore_/install-size.txt && exit ; bash" && scp bmoore_@${acct}.wpengine.com:/home/bmoore_/install-size.txt install-size.txt && cat install-size.txt)
+dbb=$(ssh -t bmoore_@${acct}.wpengine.com "[[ -d /nas/wp/www/sites/${REPLY} ]] && sudo du -s /var/lib/mysql/wp_${REPLY} | awk '{printf \"%.2f\",\$1/1024}' > /home/bmoore_/db-size.txt && exit ; bash" && scp bmoore_@${acct}.wpengine.com:/home/bmoore_/db-size.txt db-size.txt && cat db-size.txt)
+total=$(echo ${installb}+${dbb}) # | bc)
+#$(du -s /nas/wp/www/sites/${REPLY} | awk '{printf \"%.2f\",\$1/1024}') && dbb=$(sudo du -s /var/lib/mysql/wp_${REPLY} | awk '{printf \"%.2f\",\$1/1024}') && total=$(echo \${installb}+\${dbb} | bc) && 
+echo -e "Total Size: ${total}M Parent: ${acct} Child: ${REPLY} Install: ${installb}M DB: ${dbb}M\n"
+done 2>&1| sed '/^$/d'| sort -rnk3 
+ssh -tq bmoore_@${acct}.wpengine.com "sudo rm size.txt install-size.txt db-size.txt && exit ; bash" && rm size.txt install-size.txt db-size.txt
+}
+one=$1
+two=$2
+acct_size
+
+
+#acct_size() { [[ -z "$*" ]] && echo -e "\n\nDescription: Shows total account size for a parent and children.\nUsage: acct_size <acct_name>\n\n" && return 0 || sudo -v; acct=${1}; echo -e $(sudo /nas/wp/ec2/cluster parent-child ${acct}| sed 's/ /\\n/g')| while read; do [[ -d /nas/wp/www/sites/${REPLY} ]] && installb=$(du -s /nas/wp/www/sites/${REPLY}| awk '{printf "%.2f",$1/1024}') && dbb=$(sudo du -s /var/lib/mysql/wp_${REPLY}| awk '{printf "%.2f",$1/1024}') && total=$(echo ${installb}+${dbb}| bc) && echo -e "Total Size: ${total}M Parent: ${acct} Child: ${REPLY} Install: ${installb}M DB: ${dbb}M\n"; done 2>&1| sed '/^$/d'| sort -rnk3; }; acct_size
+---------------------------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------
+acct_size() { [[ -z "$*" ]] && echo -e "\n\nDescription: Shows total account size for a parent and children.\nUsage: acct_size <acct_name>\n\n" && return 0 || sudo -v; acct=${1}; echo -e $(sudo /nas/wp/ec2/cluster parent-child ${acct}| sed 's/ /\\n/g')| while read; do [[ -d /nas/wp/www/sites/${REPLY} ]] && installb=$(du -s /nas/wp/www/sites/${REPLY}| awk '{printf "%.2f",$1/1024}') && dbb=$(du -s /var/lib/mysql/wp_${REPLY}| awk '{printf "%.2f",$1/1024}') && total=$(echo ${installb}+${dbb}| bc) && echo -e "Total Size: ${total}M Parent: ${acct} Child: ${REPLY} Install: ${installb}M DB: ${dbb}M\n"; done 2>&1| sed '/^$/d'| sort -rnk3; }; acct_size
+---------------------------------------------------------------------------------------------
+www_cnt() { [[ -z "$*" ]] && echo -e "\n\nUsage: \n\n" && return 0 || code=${1}; find /var/log/apache2/ -type f -size +0 ! -name \*gz ! -name \*1| while read log; do acct=$(echo ${log}| cut -d\/ -f5| cut -d. -f1); code_count=$(egrep " ${code} " ${log}| wc -l); echo -e ${acct}" - "${code_count}" "${code}" errors."| grep -v ${acct}" - 0 "; done| sort -rnk3| head; }; www_cnt
+
+---------------------------------------------------------------------------------------------
+sudo -v;
+cfg=wp-config.php;
+pf=$(awk 'tolower($0) ~ /^\$table_prefix/ {gsub(/\"|;|'"'"'/,""); print $3}' ./${cfg});
+db=$(awk -F\' '/^define.*DB_NAME/ {print $4}' ${cfg});
+
+chop_stuff() { awk '{if ($1 ~ /[a-zA-Z]/) print $2}') $0| grep -vE \ 0$; };
+
+sp=$(sudo mysql ${db} -e "SELECT COUNT(*) as row_count FROM "${pf}"comments WHERE comment_approved = 'spam' \G;"| chop_stuff);
+tp=$(sudo mysql ${db} -e "SELECT COUNT(*) as row_count FROM "${pf}"posts WHERE post_type = 'trash' \G;"| chop_stuff);
+tc=$(sudo mysql ${db} -e "SELECT COUNT(*) as row_count FROM "${pf}"comments WHERE comment_approved = 'trash' \G;"| chop_stuff);
+op=$(sudo mysql ${db} -e "SELECT COUNT(pm.meta_id) as row_count FROM "${pf}"postmeta pm LEFT JOIN "${pf}"posts wp ON wp.ID = pm.post_id WHERE wp.ID IS NULL \G;"| chop_stuff);
+oc=$(sudo mysql ${db} -e "SELECT COUNT(*) as row_count FROM "${pf}"commentmeta WHERE comment_id NOT IN (SELECT comment_id FROM "${pf}"comments) \G;"| chop_stuff);
+t1=$(sudo mysql ${db} -e "SELECT COUNT(*) as row_count FROM "${pf}"options WHERE option_name LIKE ('_transient_%') \G;"| chop_stuff);
+t2=$(sudo mysql ${db} -e "SELECT COUNT(*) as row_count FROM "${pf}"options WHERE option_name LIKE ('_site_transient_%') \G;"| chop_stuff);
+otr=$(sudo mysql ${db} -e "SELECT COUNT(tr.object_id) as row_count FROM "${pf}"term_relationships tr INNER JOIN "${pf}"term_taxonomy tt ON (tr.term_taxonomy_id = tt.term_taxonomy_id) WHERE tt.taxonomy != 'link_category' AND tr.object_id NOT IN (SELECT ID FROM "${pf}"posts) \G;");
+lll=$(sudo mysql ${db} -e "SELECT option_value as row_count FROM "${pf}"options WHERE option_name = 'limit_login_lockouts' \G;"| chop_stuff);
+
+
+echo -e "\nConfig: "${cfg}"\nTable Prefix: "${pf}"\nDatabase: "${db}"\n\n";
+echo -e "Spam Posts: "${sp}"\nTrashed Posts: "${tp}"\nTrashed Comments: "${tc}"\nOrphaned Postmeta: "${op}"\nOrphaned Commentmeta: "${oc}"\nTransients 1: "${t1}"\nTransients 2: "${t2}"\nOrphaned Term Relationships: "${otr}"\nLimit_login_lockouts: "${lll}"\n\n";
+---------------------------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------

@@ -1,0 +1,7 @@
+#/bin/bash -x
+
+curl=1
+while [ $curl = 1 ]; do
+curl -A "Mozilla/5.0" -IL http://www.adimab.com/adimab-partners/
+sleep .2
+done

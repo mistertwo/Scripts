@@ -1,0 +1,3 @@
+#!/bin/sh
+
+ssh -t root@$1.wpengine.com "cd /nas/wp/www/staging/$1 ; bash"
