@@ -6,13 +6,21 @@ function sync {
 if [ '$hostname = othello' ]; then
 	echo "Alright Othello, lets do this!"
 	rsync -avr --progress /home/bmoore/Scripts cyberlady:/home/bmoore/
+<<<<<<< HEAD
 	#rsync -avr --progress /home/bmoore/Dump cyberlady:/home/bmoore/
+=======
+	rsync -avr --progress /home/bmoore/Dump cyberlady:/home/bmoore/
+>>>>>>> c159773132a7680977d97bdf8447cb181524fee9
 	rsync -avr --progress /home/bmoore/Pictures cyberlady:/home/bmoore/
 
 # Get from Othello to Cyberlady
 elif [ '$hostname = cyberlady' ]; then
 	echo "Alright Cyberlady, lets do this!"
+<<<<<<< HEAD
 	#rsync -avr --progress othello:/home/bmoore/Scripts /home/bmoore/
+=======
+	rsync -avr --progress othello:/home/bmoore/Scripts /home/bmoore/
+>>>>>>> c159773132a7680977d97bdf8447cb181524fee9
 	rsync -avr --progress othello:/home/bmoore/Dump /home/bmoore/
 	rsync -avr --progress othello:/home/bmoore/Pictures /home/bmoore/
 fi
