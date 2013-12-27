@@ -1,0 +1,4 @@
+#!/bin/sh
+
+#ssh -t root@$1.wpengine.com "cd /nas/wp/www/staging/$1 ; bash"
+scp root@$1.wpengine.com:/nas/wp/conf/lb/sites/$1.conf $1.conf

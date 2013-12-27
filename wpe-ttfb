@@ -1,0 +1,20 @@
+#!/bin/bash
+
+function ttfb {
+if [[ -n $domain ]]; then
+	echo -e "\n\nDescription: Test time to first byte from the CLI."
+	br="++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+	counter=0; 
+	echo -e $br "\n $domain Time To First Byte measured 10 times at 1 second intervals:\n"
+		for counter in {1..10}; do 
+		echo $counter - $(curl -o /dev/null -w "Connect: %{time_connect} TTFB: %{time_starttransfer} Total time: %{time_total} \n" --silent --output /dev/null http://$domain);
+		sleep 1
+		done
+	echo $br;
+else
+	echo -e "\nUsage: ttfb <domain_name>.\n\n"
+	return 0
+fi
+}
+domain=$1
+ttfb
