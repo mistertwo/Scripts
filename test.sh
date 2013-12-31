@@ -35,6 +35,6 @@ ssh -tq bmoore_@${acct}.wpengine.com "sudo rm size.txt install-size.txt db-size.
 one=$1
 two=$2
 acct_size
-
+ ## POWER RANGERS!!
 
 #acct_size() { [[ -z "$*" ]] && echo -e "\n\nDescription: Shows total account size for a parent and children.\nUsage: acct_size <acct_name>\n\n" && return 0 || sudo -v; acct=${1}; echo -e $(sudo /nas/wp/ec2/cluster parent-child ${acct}| sed 's/ /\\n/g')| while read; do [[ -d /nas/wp/www/sites/${REPLY} ]] && installb=$(du -s /nas/wp/www/sites/${REPLY}| awk '{printf "%.2f",$1/1024}') && dbb=$(sudo du -s /var/lib/mysql/wp_${REPLY}| awk '{printf "%.2f",$1/1024}') && total=$(echo ${installb}+${dbb}| bc) && echo -e "Total Size: ${total}M Parent: ${acct} Child: ${REPLY} Install: ${installb}M DB: ${dbb}M\n"; done 2>&1| sed '/^$/d'| sort -rnk3; }; acct_size
