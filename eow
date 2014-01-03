@@ -3,43 +3,10 @@
 # Declare Functions
 function sync {
 # Put From Othello to Cyberlady
-if [ '$hostname = othello' ]; then
-	echo "Alright Othello, lets do this!"
-<<<<<<< HEAD
-	rsync -avr --progress /home/bmoore/Scripts cyberlady:/home/bmoore/
-<<<<<<< HEAD
-	#rsync -avr --progress /home/bmoore/Dump cyberlady:/home/bmoore/
-=======
-=======
-	#rsync -avr --progress /home/bmoore/Scripts cyberlady:/home/bmoore/
->>>>>>> 4382e93610cd734f44b69ced0c90a7fb0243a350
+echo "Alright Othello, lets do this!"
 	rsync -avr --progress /home/bmoore/Dump cyberlady:/home/bmoore/
->>>>>>> c159773132a7680977d97bdf8447cb181524fee9
 	rsync -avr --progress /home/bmoore/Pictures cyberlady:/home/bmoore/
 	rsync -avr --progress /home/bmoore/Plugins cyberlady:/home/bmoore/
-
-# Get from Othello to Cyberlady
-<<<<<<< HEAD
-elif [ '$hostname = cyberlady' ]; then
-	echo "Alright Cyberlady, lets do this!"
-<<<<<<< HEAD
-<<<<<<< HEAD
-	#rsync -avr --progress othello:/home/bmoore/Scripts /home/bmoore/
-=======
-	rsync -avr --progress othello:/home/bmoore/Scripts /home/bmoore/
->>>>>>> c159773132a7680977d97bdf8447cb181524fee9
-=======
-	#rsync -avr --progress othello:/home/bmoore/Scripts /home/bmoore/
->>>>>>> 4382e93610cd734f44b69ced0c90a7fb0243a350
-	rsync -avr --progress othello:/home/bmoore/Dump /home/bmoore/
-	rsync -avr --progress othello:/home/bmoore/Pictures /home/bmoore/
-=======
-#elif [ '$hostname = cyberlady' ]; then
-#	echo "Alright Cyberlady, lets do this!"
-#	#rsync -avr --progress othello:/home/bmoore/Scripts /home/bmoore/
-#	rsync -avr --progress othello:/home/bmoore/Dump /home/bmoore/
-#	rsync -avr --progress othello:/home/bmoore/Pictures /home/bmoore/
->>>>>>> 20579b9173db4554c8fde6af7884af720d016edb
 fi
 }
 
@@ -49,12 +16,6 @@ if [ '$hostname = othello' ]; then
 	echo "Alright Othello, Kill Em Dead!"
 	rm -r /home/bmoore/Dump/*
 	rm -r /home/bmoore/Pictures/Screenshots/*
-	
-# Purge Cyberlady
-#elif [ '$hostname = cyberlady' ]; then
-#	echo "Alright Cyberlady, Kill Em Dead!"
-#	rm -r /home/bmoore/Dump/*
-#	rm -r /home/bmoore/Pictures/Screenshots/*
 fi
 }
 
