@@ -13,8 +13,7 @@
 #Usage l2 www-codes <account> <error code>
 function www-codes {
 if [[ -z ${three} ]]; then
-	echo -e "What HTTP Code would you like to search for?\n"
-	read -r err
+	read -p "What HTTP Code would you like to search for? " err
 else
 	err=${three}
 fi
@@ -38,8 +37,7 @@ ssh -tq ${uname}@${acct}.wpengine.com "rm ${acct}.${epoch}.nginx ${acct}.${epoch
 #Usage l2 tfile <account> <file name>
 function tfile { 
 if [[ -z ${three} ]]; then
-	echo -e "What File would you like to touch? (Absolute Path required)\n"
-	read -r file
+	read -p "What is the bsolute path to the file would you would like to create? " file
 else
 	file=${three}
 fi
@@ -52,8 +50,7 @@ ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/sites/${acct} && [[ -f ${f
 #Usage l2 mig-all <account> <Destination Pod>
 function mig-all {
 if [[ -z ${three} ]]; then
-		echo -e "What Pod are you moving to?\n"
-		read -r dest-pod
+		read -p "What Pod are you moving to? " dest-pod
 else
 	dest-pod=${three}
 fi
@@ -113,8 +110,7 @@ echo -e ${br}
 # Usage l2 hiload <account> <DD>
 function hiload { 
 if [[ -z ${three} ]]; then
-	echo -e "Which Day? "
-	read day
+	read -p "Which Day (must be in 2 digit format)? " day
 else
 	day=${three}
 fi
@@ -143,16 +139,12 @@ ssh -tq ${uname}@${acct}.wpengine.com "rm pf.${epoch}.txt && exit ; bash" && rm 
 #Usage l2 uptime <account> <two-digit-day> <three-digit-month> (IE: l2 uptime bmoore 12 dec)
 function uptime {
 if [[ -z ${three} ]]; then 
-	echo -e "Which Two Digit Day? (DD)"
-	read day
-	echo -e "Which Month? (Jan)"
-	read mon
+	read -p "Which Day (must be in 2 digit format)? " day
+	read -p "Which Month (must be in 3 character format, ie. 'Jan')? " mon
 elif [[ ${three} != [0-9][0-9] ]]; then
 	echo -e "\nLooks like you got it wrong!\nUsage - l2 uptime <account> <two-digit-day> <three-digit-month> (IE: l2 uptime ${acct} 12 dec)\nlets try again.\n"
-	echo -e "Which Two Digit Day? (DD)"
-	read day
-	echo -e "Which Month? (Jan)"
-	read mon
+	read -p "Which Day (must be in 2 digit format)? " day
+        read -p "Which Month (must be in 3 character format, ie. 'Jan')? " mon
 else
 day=${three}
 mon=${four}
@@ -179,22 +171,19 @@ ssh -tq ${uname}@${acct}.wpengine.com "rm ${acct}.${epoch}.access.log && exit ; 
 
 function setuname {
 	if [[ -z ${uname} ]]; then
-		echo -e "\nYou've not set a User Name!!\nWhat is your SSH User Name? "
-		read -r name
+		read -p "What is your SSH User Name? " name
 			sed -ie "s/^uname=/uname=${name}/g" ${0}
 	else
 		setname=$(awk '/^uname=/' ${0})
 		echo -e "\nYou've already set a User Name silly.\n --> ${setname}\n"
 	fi
 }
-uname=
+uname=jmorgan_
 
 #################### Get Account ####################
 function account {
 if [[ -z ${acct} ]]; then
-	echo -e "What Account are we working with?\n"
-	read acct
-	echo
+	read -p "What Account are we working with? " acct
 fi
 }
 
@@ -214,8 +203,7 @@ while [[ -z ${opt} ]]; do
 	echo -e "8: wp-plugins => Description: Show enabled plugins for an account."
 	echo -e "9: uptime => Description: Shows how many min/hr had log hits. Ideally 60 for busy site meaning at least one hit per minute happened, and, thus, no downtime."
 	echo -e ${br}
-	echo -e "Pick a Number, or Type out the Function\n"
-	read -r opt
+	read -p "Type function name or number that you wish to use: " opt
 if [[ ${opt} = 1 ]] || [[ ${opt} = www-codes ]]; then
 		www-codes
 elif [[ ${opt} = 2 ]] || [[ ${opt} = tfile ]]; then
@@ -251,7 +239,7 @@ epoch=$(date +%s)
 if [[ -z ${uname} ]]; then
 	setuname
 else
-	printf "Your current username is set to: \033[1;31m"${uname}"\033[1;000m"
+	echo -e "Your current username is set to: \033[1;31m"${uname}"\033[1;000m\n"
 	account
 	if [[ ${1} = www-codes ]]; then
 		www-codes
