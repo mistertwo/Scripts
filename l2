@@ -18,9 +18,9 @@ if [[ -z ${three} ]]; then
 else
 	err=${three}
 fi
-echo -e "\nDescription: Displays requests that had highest occurrences of the ${err} HTTP Status in ${acct}'s logs. Request counts are to the left of the requests below."
 ssh -tq ${uname}@${acct}.wpengine.com "sudo cat /var/log/nginx/${acct}.access.log > /home/${uname}/${acct}.${epoch}.nginx && sudo cat /var/log/apache2/${acct}.access.log > /home/${uname}/${acct}.${epoch}.apache && exit ; bash"
 scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.nginx ${acct}.${epoch}.nginx && scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.apache ${acct}.${epoch}.apache
+echo -e "\nDescription: Displays requests that had highest occurrences of the ${err} HTTP Status in ${acct}'s logs. Request counts are to the left of the requests below."
 for nglog in ${acct}.${epoch}.nginx
 	do echo -e ${br}${nglog}"\n"
 		awk -F\| -v code=${err} '{if ($5 ~ code) printf "IP: %s Code: %s Referrer: %s Request: %s\n",$3,$5,$7,$10}' ${nglog}| sort| uniq -c| sort -nk1| tail
@@ -55,10 +55,10 @@ if [[ -z ${three} ]]; then
 else
 	dest-pod=${three}
 fi
-echo -e "\nDescription: Output lines to migrate every account associated with another account, including parent and children."
 ssh -tq ${uname}@${acct}.wpengine.com "sudo /nas/wp/ec2/cluster parent-child ${acct} > /home/${uname}/result.${epoch}.txt && hostname | cut -d- -f2 > /home/${uname}/host.${epoch}.txt && exit ; bash"
 scp -q ${uname}@${acct}.wpengine.com:/home/${uname}/result.${epoch}.txt result.${epoch}.txt && scp -q ${uname}@${acct}.wpengine.com:/home/${uname}/host.${epoch}.txt host.${epoch}.txt
 cur-pod=$(cat host.${epoch}.txt)
+echo -e "\nDescription: Output lines to migrate every account associated with another account, including parent and children."
 echo -e ${br}
 echo -e $(cat result.txt | sed 's/ /\\n/g') | 
 while read
@@ -72,9 +72,9 @@ ssh -tq ${uname}@${acct}.wpengine.com "rm result.${epoch}.txt host.${epoch}.txt 
 #ng-logs - show log hits from nginx that took the longest time to complete.
 # Usage L2 ng-logs <account>
 function ng-logs { 
-echo -e "\nDescription: Nginx log entries below are sorted by Page Load Time (8th | delimited column).\n"
 ssh -tq ${uname}@${acct}.wpengine.com "sudo cat /var/log/nginx/${acct}.access.log > /home/${uname}/${acct}.${epoch}.nginx && exit ; bash"
 scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.nginx ${acct}.${epoch}.nginx
+echo -e "\nDescription: Nginx log entries below are sorted by Page Load Time (8th | delimited column).\n"
 echo -e "\n${br}Slow requests that did NOT receive a 200 OK HTTP Status Code.\n"
 awk '!/\|200\|/' ${acct}.${epoch}.nginx| sort -t\| -rnk8| head
 echo -e "\n${br}Slow requests that received 200 OK HTTP Status Code.\n"
