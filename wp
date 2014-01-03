@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 
 # Author: BMO
 # Name: wp
@@ -164,7 +164,6 @@ function duplicity {
 	else
 		ssh -t ${uname}@$account.wpengine.com "cd /var/tmp && sudo duplicity_restore_v2 -s $account -d $date -r / && sudo mv -f $account /home/${uname}/ && exit ; bash"
 	fi
-		#ssh -t ${uname}@$account.wpengine.com "cd /var/tmp &&  && exit ; bash"
 	# Optional, Tar up the results and download them.
 	clean=n
 	while [[ $clean = n* ]] || [[ $clean = N* ]]; do
@@ -269,6 +268,7 @@ function acnt {
 	echo -n "What is the account name we will be working with? "
 	read -r account
 }
+
 # Set Uname
 function setuname {
 if [[ -z ${uname} ]]; then
@@ -373,6 +373,9 @@ function static {
 
 #---------------- Run it! ------------------------#
 while [[ -z $more ]]; do 
+if [[ -z ${uname} ]]; then
+	setuname
+else
 	if [[ $1 = -* ]]; then
 		scnd=$1
 		thrd=$2
@@ -398,6 +401,7 @@ while [[ -z $more ]]; do
 			dyn
 		fi
 	fi
+fi
 while [[ -z $opt ]]; do
 	scnd=""
 	thrd=""
@@ -407,5 +411,4 @@ while [[ -z $opt ]]; do
 done
 more=1
 exit 0
-#kill `ps aux | grep terminal | awk '{ print $2 }'`
 done
