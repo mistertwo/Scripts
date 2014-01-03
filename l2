@@ -18,7 +18,7 @@ if [[ -z ${three} ]]; then
 else
 	err=${three}
 fi
-echo -e "\n\nDescription: Grab occurrences of all ${err} HTTP codes in an account's logs."
+echo -e "\nDescription: Grab occurrences of all ${err} HTTP codes in an account's logs."
 ssh -tq ${uname}@${acct}.wpengine.com "sudo cat /var/log/nginx/${acct}.access.log > /home/${uname}/${acct}.${epoch}.nginx && sudo cat /var/log/apache2/${acct}.access.log > /home/${uname}/${acct}.${epoch}.apache && exit ; bash"
 scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.nginx ${acct}.${epoch}.nginx && scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.apache ${acct}.${epoch}.apache
 for nglog in ${acct}.${epoch}.nginx
@@ -185,14 +185,22 @@ function setuname {
 		echo -e "\nYou've already set a User Name silly.\n --> ${setname}\n"
 	fi
 }
-uname=jmorgan_
+uname=bmoore_
+
+#################### Get Account ####################
+function account {
+if [[ -z ${acct} ]]; then
+	echo -e "What Account are we working with?\n"
+	read acct
+	echo
+fi
+}
 
 #################### MENU ####################
 
 function menu {
 while [[ -z ${opt} ]]; do
-	echo -n "What Account is this for? "
-	read -r acct
+	account
 	echo -e "${br}\nHere is what you can do\n"
 	echo -e "1: www-codes => Description: Grab occurrences of a certain HTTP code in an account's logs."
 	echo -e "2: tfile => Description: Used to touch a file that is 404'ing in an account repeatedly."
@@ -241,6 +249,7 @@ epoch=$(date +%s)
 if [[ -z ${uname} ]]; then
 	setuname
 else
+	account
 	if [[ ${1} = www-codes ]]; then
 		www-codes
 	elif [[ ${1} = tfile ]]; then
