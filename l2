@@ -26,7 +26,7 @@ for nglog in ${acct}.${epoch}.nginx
 		awk -F\| -v code=${err} '{if ($5 ~ code) printf "IP: %s Code: %s Referrer: %s Request: %s\n",$3,$5,$7,$10}' ${nglog}| sort| uniq -c| sort -nk1| tail
 	done
 for apachelog in ${acct}.${epoch}.apache
-	do echo -e ${br}${apachelog}
+	do echo -e ${br}"\n"${apachelog}
 		awk -v code=${err} '{if ($9 ~ code) printf "IP: %s Code: %s Referrer: %s Request: %s %s %s\n",$1,$9,$11,$6,$7,$8}' ${apachelog}| sort| uniq -c| sort -nk1| tail
 	done
 echo -e ${br}
@@ -185,7 +185,7 @@ function setuname {
 		echo -e "\nYou've already set a User Name silly.\n --> ${setname}\n"
 	fi
 }
-uname=bmoore_
+uname=jmorgan_
 
 #################### MENU ####################
 
