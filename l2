@@ -273,8 +273,12 @@ else
 	elif [[ ${1} = uname ]]; then
 		setuname
 	else
+<<<<<<< HEAD
 		echo -e "\nOh Noes!! You didn't select a Function and/or Account Name!\nUsage is: l2 <function> <account> <optional argument>\n"
 		echo -e "Your current username is set to: ${uname}."
+=======
+		echo -e "\nUsage is: l2 <function> <account> <optional argument>\n"
+>>>>>>> 223f344758f3e2a69402723ddc1ca67edd687e08
 		menu
 	fi
 fi
