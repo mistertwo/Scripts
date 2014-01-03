@@ -7,16 +7,13 @@ echo "Alright Othello, lets do this!"
 	rsync -avr --progress /home/bmoore/Dump cyberlady:/home/bmoore/
 	rsync -avr --progress /home/bmoore/Pictures cyberlady:/home/bmoore/
 	rsync -avr --progress /home/bmoore/Plugins cyberlady:/home/bmoore/
-fi
 }
 
 function purge { 
 # Purge on Othello
-if [ '$hostname = othello' ]; then
-	echo "Alright Othello, Kill Em Dead!"
+echo "Alright Othello, Kill Em Dead!"
 	rm -r /home/bmoore/Dump/*
 	rm -r /home/bmoore/Pictures/Screenshots/*
-fi
 }
 
 
