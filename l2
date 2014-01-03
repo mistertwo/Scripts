@@ -51,9 +51,9 @@ echo ${sp}| ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/sites/${acct} 
 #Usage l2 mig-all <account> <Destination Pod>
 function mig-all {
 if [[ -z ${three} ]]; then
-	read -p "What Pod are you moving to? " dest-pod
+	read -p "What Pod are you moving to? " destpod
 else
-	dest-pod=${three}
+	destpod=${three}
 fi
 ssh -tq ${uname}@${acct}.wpengine.com "sudo /nas/wp/ec2/cluster parent-child ${acct} > /home/${uname}/result.${epoch}.txt && hostname | cut -d- -f2 > /home/${uname}/host.${epoch}.txt && exit ; bash"
 scp -q ${uname}@${acct}.wpengine.com:/home/${uname}/result.${epoch}.txt result.${epoch}.txt && scp -q ${uname}@${acct}.wpengine.com:/home/${uname}/host.${epoch}.txt host.${epoch}.txt
@@ -62,7 +62,7 @@ echo -e "\nDescription: Output lines to migrate every account associated with an
 echo -e ${br}
 echo -e $(cat result.txt | sed 's/ /\\n/g') | 
 while read
-do echo -e "sudo /nas/wp/ec2/cluster move-to-preferred-cluster ${cur-pod} ${REPLY} ${dest-pod}"
+do echo -e "sudo /nas/wp/ec2/cluster move-to-preferred-cluster ${cur-pod} ${REPLY} ${destpod}"
 done
 echo -e "\n${br}"
 ssh -tq ${uname}@${acct}.wpengine.com "rm result.${epoch}.txt host.${epoch}.txt && exit ; bash" && rm result.${epoch}.txt host.${epoch}.txt
@@ -181,7 +181,6 @@ fi
 }
 uname=
 
->>>>>>> b1142b4301e62e3aa4df4d56092109b74f4b2931
 #################### Get Account ####################
 function account {
 if [[ -z ${acct} ]]; then
