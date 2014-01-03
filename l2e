@@ -1,7 +1,8 @@
 #!/bin/bash
 
 #Author: BMO and ElCapitan
-#Version: 1.2
+#Version: 1.3
+# 1.3 -- Added the "utime" Function
 # 1.2 -- Better Mac and "sed" compatibilty
 # 1.2 -- Removed the need for sudo with local commands
 
@@ -136,6 +137,42 @@ ssh -tq ${uname}@${acct}.wpengine.com "rm pf.${epoch}.txt && exit ; bash" && rm 
 }
 #---------------------------------------------------------------------------------------------#
 
+#Description: Shows how many min/hr had log hits. Ideally 60 for busy site meaning at least one hit per minute happened, and, thus, no downtime.
+#Usage l2 uptime <account> <two-digit-day> <three-digit-month> (IE: l2 uptime bmoore 12 dec)
+function uptime {
+if [[ -z ${three} ]]; then 
+	echo -e "Which Two Digit Day? (DD)"
+	read day
+	echo -e "Which Month? (Jan)"
+	read mon
+elif [[ ${three} != [0-9][0-9] ]]; then
+	echo -e "\nLooks like you got it wrong!\nUsage - l2 uptime <account> <two-digit-day> <three-digit-month> (IE: l2 uptime ${acct} 12 dec)\nlets try again.\n"
+	echo -e "Which Two Digit Day? (DD)"
+	read day
+	echo -e "Which Month? (Jan)"
+	read mon
+else
+day=${three}
+mon=${four}
+fi
+log="/var/log/apache2/${acct}.access.log"
+ssh -tq ${uname}@${acct}.wpengine.com "sudo zgrep -Ei ${day}\"/\"${mon} ${log} | awk '{gsub(/\[|/,\"\"); print \$4}'| sed 's/:[0-9][0-9]$//g'| sort| uniq| sed 's/:[0-9][0-9]$//g'| uniq -c > /home/${uname}/${acct}.${epoch}.access.log
+ 	 sudo zgrep -Ei ${day}\"/\"${mon} ${log}.1 | awk '{gsub(/\[|/,\"\"); print \$4}'| sed 's/:[0-9][0-9]$//g'| sort| uniq| sed 's/:[0-9][0-9]$//g'| uniq -c >> /home/${uname}/${acct}.${epoch}.access.log
+  	 sudo zgrep -Ei ${day}\"/\"${mon} ${log}.2.gz | awk '{gsub(/\[|/,\"\"); print \$4}'| sed 's/:[0-9][0-9]$//g'| sort| uniq| sed 's/:[0-9][0-9]$//g'| uniq -c >> /home/${uname}/${acct}.${epoch}.access.log
+   	 sudo zgrep -Ei ${day}\"/\"${mon} ${log}.3.gz | awk '{gsub(/\[|/,\"\"); print \$4}'| sed 's/:[0-9][0-9]$//g'| sort| uniq| sed 's/:[0-9][0-9]$//g'| uniq -c >> /home/${uname}/${acct}.${epoch}.access.log
+     sudo zgrep -Ei ${day}\"/\"${mon} ${log}.4.gz | awk '{gsub(/\[|/,\"\"); print \$4}'| sed 's/:[0-9][0-9]$//g'| sort| uniq| sed 's/:[0-9][0-9]$//g'| uniq -c >> /home/${uname}/${acct}.${epoch}.access.log
+     sudo zgrep -Ei ${day}\"/\"${mon} ${log}.5.gz | awk '{gsub(/\[|/,\"\"); print \$4}'| sed 's/:[0-9][0-9]$//g'| sort| uniq| sed 's/:[0-9][0-9]$//g'| uniq -c >> /home/${uname}/${acct}.${epoch}.access.log
+     exit ; bash"
+scp -q ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.access.log ${acct}.${epoch}.access.log
+echo -e "\nCurrent date is "$(date)"\n${br}"
+cat ${acct}.${epoch}.access.log | while read line; do awk -vaccount=${acct} '{printf "Log hits on %s/60 possible minutes during the %s:00-59 time period for "account".\n",$1,$2}'
+echo -e ${br}"\n"
+done
+ssh -tq ${uname}@${acct}.wpengine.com "rm ${acct}.${epoch}.access.log && exit ; bash" && rm ${acct}.${epoch}.access.log
+}
+
+#---------------------------------------------------------------------------------------------#
+
 #################### USER NAME ####################
 
 function setuname {
@@ -165,6 +202,7 @@ while [[ -z ${opt} ]]; do
 	echo -e "6: sql-heavy-rows => Description: Show which tables have over 5000 rows for an account."
 	echo -e "7: hiload => Description: Show load that was 1.5x the number of processer cores."
 	echo -e "8: wp-plugins => Description: Show enabled plugins for an account."
+	echo -e "9: uptime => Description: Shows how many min/hr had log hits. Ideally 60 for busy site meaning at least one hit per minute happened, and, thus, no downtime."
 	echo -e ${br}
 	echo -e "Pick a Number, or Type out the Function\n"
 	read -r opt
@@ -184,6 +222,8 @@ elif [[ ${opt} = 7 ]] || [[ ${opt} = hiload ]]; then
 		hiload
 elif [[ ${opt} = 8 ]] || [[ ${opt} = wp-plugins ]]; then
 		wp-plugins
+elif [[ ${opt} = 9 ]] || [[ ${opt} = uptime ]]; then
+		uptime
 else
 	echo -e "${opt}\nYou Didn't do it right! Try again.\n"
 	opt=
@@ -217,6 +257,8 @@ else
 		hiload
 	elif [[ ${1} = wp-plugins ]]; then
 		wp-plugins
+	elif [[ ${1} = uptime ]]; then
+		uptime
 	elif [[ ${1} = uname ]]; then
 		setuname
 	else
