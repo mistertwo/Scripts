@@ -22,11 +22,11 @@ echo -e "\nDescription: Grab occurrences of all ${err} HTTP codes in an account'
 ssh -tq ${uname}@${acct}.wpengine.com "sudo cat /var/log/nginx/${acct}.access.log > /home/${uname}/${acct}.${epoch}.nginx && sudo cat /var/log/apache2/${acct}.access.log > /home/${uname}/${acct}.${epoch}.apache && exit ; bash"
 scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.nginx ${acct}.${epoch}.nginx && scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.apache ${acct}.${epoch}.apache
 for nglog in ${acct}.${epoch}.nginx
-	do echo -e ${br}"\n"${nglog}
+	do echo -e ${br}"\n"${nglog}"\n"
 		awk -F\| -v code=${err} '{if ($5 ~ code) printf "IP: %s Code: %s Referrer: %s Request: %s\n",$3,$5,$7,$10}' ${nglog}| sort| uniq -c| sort -nk1| tail
 	done
 for apachelog in ${acct}.${epoch}.apache
-	do echo -e ${br}"\n"${apachelog}
+	do echo -e ${br}"\n"${apachelog}"\n"
 		awk -v code=${err} '{if ($9 ~ code) printf "IP: %s Code: %s Referrer: %s Request: %s %s %s\n",$1,$9,$11,$6,$7,$8}' ${apachelog}| sort| uniq -c| sort -nk1| tail
 	done
 echo -e ${br}
