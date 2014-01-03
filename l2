@@ -37,12 +37,12 @@ ssh -tq ${uname}@${acct}.wpengine.com "rm ${acct}.${epoch}.nginx ${acct}.${epoch
 #Usage l2 tfile <account> <file name>
 function tfile { 
 if [[ -z ${three} ]]; then
-	read -p "What is the bsolute path to the file would you would like to create? " file
+	read -p "What is the absolute path to the file would you would like to create? " file
 else
 	file=${three}
 fi
 echo -e "\nDescription: Touches a file and sets proper permissions to mitigate 404 errors. Try using www-codes first to find 404 errors in an account."
-ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/sites/${acct} && [[ -f ${file} ]] || touch ./${file} && sudo /nas/wp/admin fixperms ${acct} && exit ; bash"
+echo ${sp}| ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/sites/${acct} && [[ -f ${file} ]] || touch ./${file} && sudo /nas/wp/admin fixperms ${acct} && exit ; bash"
 }
 #---------------------------------------------------------------------------------------------#
 
@@ -116,7 +116,7 @@ else
 fi
 echo -e "\n\nDescription: Show times when load was over 1.5x the number of processor cores for this server."
 echo -e ${br}
-ssh -tq ${uname}@${acct}.wpengine.com "if [[ ! -f /var/log/sysstat/sa${day} ]]; then echo -e \"\nToo Far Back, try again\"; else sudo sar -q -f /var/log/sysstat/sa${day}| awk -vcpu=$(grep ^processor /proc/cpuinfo| wc -l) '{if (\$5 > (1.5 * cpu)) print}'; fi && exit ; bash"
+ssh -tq ${uname}@${acct}.wpengine.com "if [[ ! -f /var/log/sysstat/sa${day} ]]; then echo -e \"\nInfo for ${day} does not exist, please try again.\"; else sudo sar -q -f /var/log/sysstat/sa${day}| awk -vcpu=$(grep ^processor /proc/cpuinfo| wc -l) '{if (\$5 > (1.5 * cpu)) print}'; fi && exit ; bash"
 echo -e "\n${br}"
 }
 #---------------------------------------------------------------------------------------------#
@@ -179,7 +179,6 @@ function setuname {
 	fi
 }
 uname=jmorgan_
-
 #################### Get Account ####################
 function account {
 if [[ -z ${acct} ]]; then
