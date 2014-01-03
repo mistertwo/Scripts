@@ -1,7 +1,8 @@
 #!/bin/bash
 
-#Author: BMO and ElCapitan
-#Version: 1.3
+#Author: BMO and JM
+#Version: 1.4
+# 1.4 -- Debugging Time with JM getting things working more smoothly and looking better
 # 1.3 -- Added the "utime" Function
 # 1.2 -- Better Mac and "sed" compatibilty
 # 1.2 -- Removed the need for sudo with local commands
@@ -50,7 +51,7 @@ ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/sites/${acct} && [[ -f ${f
 #Usage l2 mig-all <account> <Destination Pod>
 function mig-all {
 if [[ -z ${three} ]]; then
-		read -p "What Pod are you moving to? " dest-pod
+	read -p "What Pod are you moving to? " dest-pod
 else
 	dest-pod=${three}
 fi
@@ -144,7 +145,7 @@ if [[ -z ${three} ]]; then
 elif [[ ${three} != [0-9][0-9] ]]; then
 	echo -e "\nLooks like you got it wrong!\nUsage - l2 uptime <account> <two-digit-day> <three-digit-month> (IE: l2 uptime ${acct} 12 dec)\nlets try again.\n"
 	read -p "Which Day (must be in 2 digit format)? " day
-        read -p "Which Month (must be in 3 character format, ie. 'Jan')? " mon
+    read -p "Which Month (must be in 3 character format, ie. 'Jan')? " mon
 else
 day=${three}
 mon=${four}
@@ -170,15 +171,15 @@ ssh -tq ${uname}@${acct}.wpengine.com "rm ${acct}.${epoch}.access.log && exit ; 
 #################### USER NAME ####################
 
 function setuname {
-	if [[ -z ${uname} ]]; then
-		read -p "What is your SSH User Name? " name
-			sed -ie "s/^uname=/uname=${name}/g" ${0}
-	else
-		setname=$(awk '/^uname=/' ${0})
-		echo -e "\nYou've already set a User Name silly.\n --> ${setname}\n"
-	fi
+if [[ -z ${uname} ]]; then
+	read -p "What is your SSH User Name? " name
+	sed -ie "s/^uname=/uname=${name}/g" ${0}
+else
+	setname=$(awk '/^uname=/' ${0})
+	echo -e "\nYou've already set a User Name silly.\n --> ${setname}\n"
+fi
 }
-uname=jmorgan_
+uname=
 
 #################### Get Account ####################
 function account {
@@ -205,23 +206,23 @@ while [[ -z ${opt} ]]; do
 	echo -e ${br}
 	read -p "Type function name or number that you wish to use: " opt
 if [[ ${opt} = 1 ]] || [[ ${opt} = www-codes ]]; then
-		www-codes
+	www-codes
 elif [[ ${opt} = 2 ]] || [[ ${opt} = tfile ]]; then
-		tfile
+	tfile
 elif [[ ${opt} = 3 ]] || [[ ${opt} = mig-all ]]; then
-		mig-all
+	mig-all
 elif [[ ${opt} = 4 ]] || [[ ${opt} = ng-logs ]]; then
-		ng-logs
+	ng-logs
 elif [[ ${opt} = 5 ]] || [[ ${opt} = sql-slow ]]; then
-		sql-slow
+	sql-slow
 elif [[ ${opt} = 6 ]] || [[ ${opt} = sql-heavy-rows ]]; then
-		sql-heavy-rows
+	sql-heavy-rows
 elif [[ ${opt} = 7 ]] || [[ ${opt} = hiload ]]; then
-		hiload
+	hiload
 elif [[ ${opt} = 8 ]] || [[ ${opt} = wp-plugins ]]; then
-		wp-plugins
+	wp-plugins
 elif [[ ${opt} = 9 ]] || [[ ${opt} = uptime ]]; then
-		uptime
+	uptime
 else
 	echo -e "${opt}\nYou Didn't do it right! Try again.\n"
 	opt=
@@ -240,29 +241,31 @@ if [[ -z ${uname} ]]; then
 	setuname
 else
 	echo -e "Your current username is set to: \033[1;31m"${uname}"\033[1;000m\n"
-	account
 	if [[ ${1} = www-codes ]]; then
-		www-codes
+		account && www-codes
 	elif [[ ${1} = tfile ]]; then
-		tfile
+		account && tfile
 	elif [[ ${1} = mig-all ]]; then
-		mig-all
+		account && mig-all
 	elif [[ ${1} = ng-logs ]]; then
-		ng-logs
+		account && ng-logs
 	elif [[ ${1} = sql-slow ]]; then
-		sql-slow
+		account && sql-slow
 	elif [[ ${1} = sql-heavy-rows ]]; then
-		sql-heavy-rows
+		account && sql-heavy-rows
 	elif [[ ${1} = hiload ]]; then
-		hiload
+		account && hiload
 	elif [[ ${1} = wp-plugins ]]; then
-		wp-plugins
+		account && wp-plugins
 	elif [[ ${1} = uptime ]]; then
-		uptime
+		account && uptime
 	elif [[ ${1} = uname ]]; then
 		setuname
 	else
 		echo -e "\nUsage is: l2 <function> <account> <optional argument>\n"
+		acct=
+		three=
+		four=
 		menu
 	fi
 fi
