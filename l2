@@ -18,15 +18,15 @@ if [[ -z ${three} ]]; then
 else
 	err=${three}
 fi
-echo -e "\nDescription: Grab occurrences of all ${err} HTTP codes in an account's logs."
+echo -e "\nDescription: Displays requests that had highest occurrences of the ${err} HTTP Status in ${acct}'s logs. Request counts are to the left of the requests below."
 ssh -tq ${uname}@${acct}.wpengine.com "sudo cat /var/log/nginx/${acct}.access.log > /home/${uname}/${acct}.${epoch}.nginx && sudo cat /var/log/apache2/${acct}.access.log > /home/${uname}/${acct}.${epoch}.apache && exit ; bash"
 scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.nginx ${acct}.${epoch}.nginx && scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.apache ${acct}.${epoch}.apache
 for nglog in ${acct}.${epoch}.nginx
-	do echo -e ${br}"\n"${nglog}"\n"
+	do echo -e ${br}${nglog}"\n"
 		awk -F\| -v code=${err} '{if ($5 ~ code) printf "IP: %s Code: %s Referrer: %s Request: %s\n",$3,$5,$7,$10}' ${nglog}| sort| uniq -c| sort -nk1| tail
 	done
 for apachelog in ${acct}.${epoch}.apache
-	do echo -e ${br}"\n"${apachelog}"\n"
+	do echo -e ${br}${apachelog}"\n"
 		awk -v code=${err} '{if ($9 ~ code) printf "IP: %s Code: %s Referrer: %s Request: %s %s %s\n",$1,$9,$11,$6,$7,$8}' ${apachelog}| sort| uniq -c| sort -nk1| tail
 	done
 echo -e ${br}
@@ -43,6 +43,7 @@ if [[ -z ${three} ]]; then
 else
 	file=${three}
 fi
+echo -e "\nDescription: Touches a file and sets proper permissions to mitigate 404 errors. Try using www-codes first to find 404 errors in an account."
 ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/sites/${acct} && [[ -f ${file} ]] || touch ./${file} && sudo /nas/wp/admin fixperms ${acct} && exit ; bash"
 }
 #---------------------------------------------------------------------------------------------#
@@ -56,11 +57,11 @@ if [[ -z ${three} ]]; then
 else
 	dest-pod=${three}
 fi
-echo -e "\n\nDescription: Output lines to migrate every account associated with another account, including parent and children."
+echo -e "\nDescription: Output lines to migrate every account associated with another account, including parent and children."
 ssh -tq ${uname}@${acct}.wpengine.com "sudo /nas/wp/ec2/cluster parent-child ${acct} > /home/${uname}/result.${epoch}.txt && hostname | cut -d- -f2 > /home/${uname}/host.${epoch}.txt && exit ; bash"
 scp -q ${uname}@${acct}.wpengine.com:/home/${uname}/result.${epoch}.txt result.${epoch}.txt && scp -q ${uname}@${acct}.wpengine.com:/home/${uname}/host.${epoch}.txt host.${epoch}.txt
 cur-pod=$(cat host.${epoch}.txt)
-echo -e ${br}"\n"
+echo -e ${br}
 echo -e $(cat result.txt | sed 's/ /\\n/g') | 
 while read
 do echo -e "sudo /nas/wp/ec2/cluster move-to-preferred-cluster ${cur-pod} ${REPLY} ${dest-pod}"
@@ -70,29 +71,30 @@ ssh -tq ${uname}@${acct}.wpengine.com "rm result.${epoch}.txt host.${epoch}.txt 
 }
 #---------------------------------------------------------------------------------------------#
 
-
 #ng-logs - show log hits from nginx that took the longest time to complete.
 # Usage L2 ng-logs <account>
 function ng-logs { 
+echo -e "\nDescription: Nginx log entries below are sorted by Page Load Time (8th | delimited column).\n"
 ssh -tq ${uname}@${acct}.wpengine.com "sudo cat /var/log/nginx/${acct}.access.log > /home/${uname}/${acct}.${epoch}.nginx && exit ; bash"
 scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.nginx ${acct}.${epoch}.nginx
-echo -e "\nLog lines below are sorted by Page Load Time (8th | delimited column).\n${br}\nSlow requests that did NOT receive a 200 OK HTTP Status Code.\n"
-awk '!/\|200\|/' ${acct}.${epoch}.nginx| sort -t\| -nk8| tail && echo -e "\n${br}\nSlow requests that received 200 OK HTTP Status Code.\n"
-awk '/\|200\|/' ${acct}.${epoch}.nginx| sort -t\| -nk8| tail
-echo -e "${br}\n"
+echo -e "\n${br}Slow requests that did NOT receive a 200 OK HTTP Status Code.\n"
+awk '!/\|200\|/' ${acct}.${epoch}.nginx| sort -t\| -rnk8| head
+echo -e "\n${br}Slow requests that received 200 OK HTTP Status Code.\n"
+awk '/\|200\|/' ${acct}.${epoch}.nginx| sort -t\| -rnk8| head
+echo -e "${br}"
 ssh -tq ${uname}@${acct}.wpengine.com "rm ${acct}.${epoch}.nginx && exit ; bash" && rm ${acct}.${epoch}.nginx
 }
 #---------------------------------------------------------------------------------------------#
 
-
 #sql-slow - show problematic sql infos.
 #usage l2 sql-slow <account>
 function sql-slow { 
-echo -e "\n"${br}"\nSlow users and their log hit counts: \n"
+echo -e "\nDescription: Display problematic MySQL information. (DO NOT PASTE THIS COMPLETE OUTPUT TO A CUSTOMER)\n"
+echo -e "\n"${br}"Show MySQL users that hit the slow query log the most.\n"
 ssh -tq ${uname}@${acct}.wpengine.com "sudo awk '/User@Host/ {print $3}' /var/log/mysql/mysql-slow.log| cut -d\[ -f1| sort| uniq -c| sort -nk1| tail -10 && exit ; bash"
-echo -e ${br}"\n PHP line number log hits: \n"
+echo -e ${br}"Count of which PHP lines that created slow queries: \n"
 ssh -tq ${uname}@${acct}.wpengine.com "sudo grep -oP '(?<=\[\/nas\/wp\/www\/cluster\-).*(?=\])' /var/log/mysql/mysql-slow.log| sort| uniq -c| sort -nk1| tail -10 && exit ; bash"
-echo -e ${br}"\nHeavy SQL Tables based on table size vs. table rows: \n"
+echo -e ${br}"Heavy SQL Tables based on table size vs. table rows: \n"
 ssh -tq ${uname}@${acct}.wpengine.com "sudo mysql -e \"select concat(table_schema, '.', table_name), concat(round(table_rows / 1000000, 2), 'M') rows, concat(round(data_length / ( 1024 * 1024 * 1024 ), 2), 'G') DATA, concat(round(index_length / ( 1024 * 1024 * 1024 ), 2), 'G') idx, concat(round(( data_length + index_length ) / ( 1024 * 1024 * 1024 ), 2), 'G') total_size, round(index_length / data_length, 2) idxfrac from information_schema.TABLES ORDER by data_length + index_length DESC limit 10;\" && exit ; bash"
 echo -e ${br}
 }
@@ -101,9 +103,9 @@ echo -e ${br}
 #sql-heavy-rows - show which tables have over 5000 rows for an account.
 #Usage l2 sql-heavey-rows <account>
 function sql-heavy-rows {
-echo -e "\n"${br}"\nAccount: "${acct}"\nDatabase: wp_"${acct}"\n"${br}
+echo -e "\n"${br}"Account: "${acct}"\nDatabase: wp_"${acct}"\n"${br}
 ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/sites/${acct} && sudo mysql wp_${acct} -e 'show table status where rows > 5000;'| awk '{print \$1,\$5 }'| sort -nk2| column -t && exit ; bash"
-echo -e ${br}"\n"
+echo -e ${br}
 }
 #---------------------------------------------------------------------------------------------#
 
@@ -117,7 +119,7 @@ else
 	day=${three}
 fi
 echo -e "\n\nDescription: Show times when load was over 1.5x the number of processor cores for this server."
-echo -e ${br}"\n"
+echo -e ${br}
 ssh -tq ${uname}@${acct}.wpengine.com "if [[ ! -f /var/log/sysstat/sa${day} ]]; then echo -e \"\nToo Far Back, try again\"; else sudo sar -q -f /var/log/sysstat/sa${day}| awk -vcpu=$(grep ^processor /proc/cpuinfo| wc -l) '{if (\$5 > (1.5 * cpu)) print}'; fi && exit ; bash"
 echo -e "\n${br}"
 }
@@ -130,9 +132,9 @@ ssh -tq ${uname}@${acct}.wpengine.com "sudo -v && sudo grep \"table_prefix\" /na
 scp -q ${uname}@${acct}.wpengine.com:/home/${uname}/pf.${epoch}.txt pf.${epoch}.txt
 pf=$(awk 'tolower($0) ~ /^\$table_prefix/ {gsub(/\"|;|'"'"'/,""); print $3}' pf.${epoch}.txt)
 db=wp_${acct}
-echo -e "\n"${br}"\nEnabled plugins for account "${acct}": \n"
+echo -e "\n"${br}"Enabled plugins for account "${acct}": \n"
 ssh -tq ${uname}@${acct}.wpengine.com "sudo mysql ${db} -e \"select * from ${pf}options where option_name='active_plugins';\"| tr '\"' '\n'| awk -F\/ '/^[a-zA-Z]/ {print \$1}'| sed 1d && exit ; bash"
-echo -e ${br}"\n"
+echo -e ${br}
 ssh -tq ${uname}@${acct}.wpengine.com "rm pf.${epoch}.txt && exit ; bash" && rm pf.${epoch}.txt
 }
 #---------------------------------------------------------------------------------------------#
@@ -166,7 +168,7 @@ ssh -tq ${uname}@${acct}.wpengine.com "sudo zgrep -Ei ${day}\"/\"${mon} ${log} |
 scp -q ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.access.log ${acct}.${epoch}.access.log
 echo -e "\nCurrent date is "$(date)"\n${br}"
 cat ${acct}.${epoch}.access.log | while read line; do awk -vaccount=${acct} '{printf "Log hits on %s/60 possible minutes during the %s:00-59 time period for "account".\n",$1,$2}'
-echo -e ${br}"\n"
+echo -e ${br}
 done
 ssh -tq ${uname}@${acct}.wpengine.com "rm ${acct}.${epoch}.access.log && exit ; bash" && rm ${acct}.${epoch}.access.log
 }
@@ -185,7 +187,7 @@ function setuname {
 		echo -e "\nYou've already set a User Name silly.\n --> ${setname}\n"
 	fi
 }
-uname=bmoore_
+uname=
 
 #################### Get Account ####################
 function account {
@@ -201,7 +203,7 @@ fi
 function menu {
 while [[ -z ${opt} ]]; do
 	account
-	echo -e "${br}\nHere is what you can do\n"
+	echo -e "${br}Available tasks:\n"
 	echo -e "1: www-codes => Description: Grab occurrences of a certain HTTP code in an account's logs."
 	echo -e "2: tfile => Description: Used to touch a file that is 404'ing in an account repeatedly."
 	echo -e "3: mig-all => Description: Output lines to migrate every account associated with another account, including parent and children."
@@ -244,7 +246,7 @@ done
 acct=${2}
 three=${3}
 four=${4}
-br="++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+br="++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n"
 epoch=$(date +%s)
 if [[ -z ${uname} ]]; then
 	setuname
@@ -272,6 +274,7 @@ else
 		setuname
 	else
 		echo -e "\nOh Noes!! You didn't select a Function and/or Account Name!\nUsage is: l2 <function> <account> <optional argument>\n"
+		echo -e "Your current username is set to: ${uname}."
 		menu
 	fi
 fi
