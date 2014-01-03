@@ -271,7 +271,7 @@ else
 	elif [[ ${1} = uname ]]; then
 		setuname
 	else
-		echo -e "\nOh Noes!! You didn't select a Function and/or Account Name!\nUsage is: l2 <function> <account> <optional argument>\n"
+		echo -e "\nUsage is: l2 <function> <account> <optional argument>\n"
 		menu
 	fi
 fi
