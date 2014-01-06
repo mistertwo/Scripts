@@ -3,17 +3,14 @@
 # Author: BMO
 # Name: wp
 # Description: All the SSH things you need to do, but are too lazy to type them in.
-# Version: 4.1
+# Version: 4.2
 # Recent Changes:
+# 4.2 -- Silenced the output of SSH and SCP
 # 4.1 -- Hurray uname function!
 # 4.0 -- Duplicity Restore function
 # 3.9 -- Better wp-admin and wp-includes exclusions with the Find function
 # 3.9 -- Smoothed out the exit ability of the find function
 # 3.9 -- Added htop function
-# 3.8 -- Excluded wp-admin and wp-includes from the Find function
-# 3.8 -- Added ability to nano to line number after searching for string
-# 3.8 -- Added ack-grep functionality
-# 3.8 -- Added the Bot Redirect option to be turned off
 
 
 #------------------------------- Define the functions -----------------------------------#
@@ -35,13 +32,13 @@ function login {
 		echo "Alright, Logging into the $envir and going to $frth"
 			sl -ale
 			clear
-			ssh -t ${uname}@$account.wpengine.com "cd /nas/wp/www/$envir/$account/$frth ; bash"
+			ssh -tq ${uname}@$account.wpengine.com "cd /nas/wp/www/$envir/$account/$frth ; bash"
 		more
 	else
 		echo "Alright, logging into the $envir Server"
 			sl -ale
 			clear
-			ssh -t ${uname}@$account.wpengine.com "cd /nas/wp/www/$envir/$account ; bash"
+			ssh -tq ${uname}@$account.wpengine.com "cd /nas/wp/www/$envir/$account ; bash"
 	fi
 	echo "Back to the Menu"
 }
@@ -63,7 +60,7 @@ function get {
 		echo -n "Where do you want it local? "
 		read -r file
 	fi
-		scp -r ${uname}@$account.wpengine.com:/nas/wp/www/$envir/$account/$dir $file
+		scp -rq ${uname}@$account.wpengine.com:/nas/wp/www/$envir/$account/$dir $file
 	echo "Back to the Menu"
 }
 
@@ -84,8 +81,8 @@ function put {
 		echo -n "Where do you want it on the server? "
 		read -r dir
 	fi
-		scp -r $file ${uname}@$account.wpengine.com:/home/${uname}/$file
-		ssh -t ${uname}@$account.wpengine.com "sudo mv $file /nas/wp/www/$envir/$account/$dir && exit ; bash"
+		scp -rq $file ${uname}@$account.wpengine.com:/home/${uname}/$file
+		ssh -tq ${uname}@$account.wpengine.com "sudo mv $file /nas/wp/www/$envir/$account/$dir && exit ; bash"
 	echo "Back to the Menu"
 }
 
@@ -101,12 +98,12 @@ function find {
 	echo -n " Is this a File or a String that you are looking for? "
 	read -r which
 	if [[ $which = f* ]]; then
-		ssh -t ${uname}@$account.wpengine.com "cd /nas/wp/www/$envir/$account/ && find . -type f -name '"*$search*"' ! -path '"./wp-admin/*"' ! -path '"./wp-includes/*"' > /home/${uname}/find.txt && exit ; bash"
-		scp -r ${uname}@$account.wpengine.com:/home/${uname}/find.txt find.txt
+		ssh -tq ${uname}@$account.wpengine.com "cd /nas/wp/www/$envir/$account/ && find . -type f -name '"*$search*"' ! -path '"./wp-admin/*"' ! -path '"./wp-includes/*"' > /home/${uname}/find.txt && exit ; bash"
+		scp -rq ${uname}@$account.wpengine.com:/home/${uname}/find.txt find.txt
 		nl find.txt
 	else
-		ssh -t ${uname}@$account.wpengine.com "cd /nas/wp/www/$envir/$account && sudo ack-grep --ignore-dir=wp-includes --ignore-dir=wp-admin --nosql "$search" > /home/${uname}/ack.txt && exit ; bash"
-		scp -r ${uname}@$account.wpengine.com:/home/${uname}/ack.txt ack.txt
+		ssh -tq ${uname}@$account.wpengine.com "cd /nas/wp/www/$envir/$account && sudo ack-grep --ignore-dir=wp-includes --ignore-dir=wp-admin --nosql "$search" > /home/${uname}/ack.txt && exit ; bash"
+		scp -rq ${uname}@$account.wpengine.com:/home/${uname}/ack.txt ack.txt
 		nl ack.txt
 		awk -F':' '{print $1}' ack.txt > find.txt
 		awk -F':' '{print $2}' ack.txt > line.txt
@@ -117,10 +114,10 @@ function find {
 			pick=$(sed -n "$num"p find.txt)
 			if [[ $which != f* ]]; then
 				pickline=$(sed -n "$num"p line.txt)
-				ssh -t ${uname}@$account.wpengine.com "cd /nas/wp/www/$envir/$account && sudo nano +$pickline $pick && exit ; bash"
+				ssh -tq ${uname}@$account.wpengine.com "cd /nas/wp/www/$envir/$account && sudo nano +$pickline $pick && exit ; bash"
 				nl ack.txt
 			else
-				ssh -t ${uname}@$account.wpengine.com "cd /nas/wp/www/$envir/$account && sudo nano $pick && exit ; bash"
+				ssh -tq ${uname}@$account.wpengine.com "cd /nas/wp/www/$envir/$account && sudo nano $pick && exit ; bash"
 				nl find.txt
 			fi
 		echo -n "Would you like to open another? Press X to finish "
@@ -132,7 +129,7 @@ function find {
 # Make a .tar of /wp-content folder on production
 function tar {
 	envir
-	ssh -t ${uname}@$account.wpengine.com "cd /nas/wp/www/$envir/$account/_wpeprivate && sudo tar -cvf $account-wp-content.tar ../wp-content/* && exit ; bash"
+	ssh -tq ${uname}@$account.wpengine.com "cd /nas/wp/www/$envir/$account/_wpeprivate && sudo tar -cvf $account-wp-content.tar ../wp-content/* && exit ; bash"
 	echo -n "Would you like to Download this .tar? Yes or No "
 	read -r down
 	if [[ $down = y* ]]; then
@@ -160,63 +157,63 @@ function duplicity {
 	fi
 	# Do the things
 	if [[ -n $folder ]]; then
-		ssh -t ${uname}@$account.wpengine.com "cd /var/tmp && sudo duplicity_restore_v2 -s $account -d $date -r $folder && sudo mv -f $account /home/${uname}/ && exit ; bash"
+		ssh -tq ${uname}@$account.wpengine.com "cd /var/tmp && sudo duplicity_restore_v2 -s $account -d $date -r $folder && sudo mv -f $account /home/${uname}/ && exit ; bash"
 	else
-		ssh -t ${uname}@$account.wpengine.com "cd /var/tmp && sudo duplicity_restore_v2 -s $account -d $date -r / && sudo mv -f $account /home/${uname}/ && exit ; bash"
+		ssh -tq ${uname}@$account.wpengine.com "cd /var/tmp && sudo duplicity_restore_v2 -s $account -d $date -r / && sudo mv -f $account /home/${uname}/ && exit ; bash"
 	fi
-		#ssh -t ${uname}@$account.wpengine.com "cd /var/tmp &&  && exit ; bash"
+		#ssh -tq ${uname}@$account.wpengine.com "cd /var/tmp &&  && exit ; bash"
 	# Optional, Tar up the results and download them.
 	clean=n
 	while [[ $clean = n* ]] || [[ $clean = N* ]]; do
 	echo -n "Would you like to Download, Rsync, or Move the results? (press Enter for None of these) "
 	read -r option
 		if [[ $option = d* ]] || [[ $option = D* ]]; then
-			ssh -t ${uname}@$account.wpengine.com "tar -cvf $account-duplicity.tar $account && exit ; bash"
+			ssh -tq ${uname}@$account.wpengine.com "tar -cvf $account-duplicity.tar $account && exit ; bash"
 			scp ${uname}@$account.wpengine.com:$account-duplicity.tar $account-duplicity.tar 
 		elif [[ $option = r* ]] || [[ $option = R* ]]; then
 			echo "Sending you in as Root -> Best of luck soldier. (~sad trumpet plays in the background~)"
-			ssh -t ${uname}@bmoore.wpengine.com "sudo ssh root@$account.wpengine.com && exit ; bash"
+			ssh -tq ${uname}@bmoore.wpengine.com "sudo ssh root@$account.wpengine.com && exit ; bash"
 		elif [[ $option = m* ]] || [[ $option = M* ]]; then
 			echo "Tar it or as is? "
 			read -r method
 				if [[ $method = t* ]]; then
-					ssh -t ${uname}@$account.wpengine.com "tar -cvf $account-duplicity.tar $account && sudo mv $account-duplicity.tar /nas/wp/www/sites/$account/_wpeprivate/ && exit ; bash"
+					ssh -tq ${uname}@$account.wpengine.com "tar -cvf $account-duplicity.tar $account && sudo mv $account-duplicity.tar /nas/wp/www/sites/$account/_wpeprivate/ && exit ; bash"
 				else
-					ssh -t ${uname}@$account.wpengine.com "sudo mv -f $account /nas/wp/www/sites/$account/_wpeprivate/ && exit ; bash"
+					ssh -tq ${uname}@$account.wpengine.com "sudo mv -f $account /nas/wp/www/sites/$account/_wpeprivate/ && exit ; bash"
 				fi
 		elif [[ -z $option ]]; then
 			echo "Alright, dropping you in the folder, have fun."
-			ssh -t ${uname}@$account.wpengine.com "cd $acount ; bash"
+			ssh -tq ${uname}@$account.wpengine.com "cd $acount ; bash"
 		fi
 	echo "All Done? Clean up? Yes or No "
 	read -r clean
 	done
 	sleep .5
-	ssh -t ${uname}@$account.wpengine.com "sudo rm -rf $account && exit ; bash"
+	ssh -tq ${uname}@$account.wpengine.com "sudo rm -rf $account && exit ; bash"
 	echo "Back to the Menu"
 }
 
 # Uncancel the site
 function uncan {
-	ssh -t ${uname}@$account.wpengine.com "sudo /nas/wp/ec2/cluster uncancel-site $account && exit ; bash"
+	ssh -tq ${uname}@$account.wpengine.com "sudo /nas/wp/ec2/cluster uncancel-site $account && exit ; bash"
 	echo "Back to the Menu"
 }
 
 # Clear the Rewrite Rules
 function rewrite {
-	ssh -t ${uname}@$account.wpengine.com "sudo php /nas/wp/www/tools/wpe.php option-set $account rewrites NULL && exit ; bash"
+	ssh -tq ${uname}@$account.wpengine.com "sudo php /nas/wp/www/tools/wpe.php option-set $account rewrites NULL && exit ; bash"
 	echo "Back to the Menu"
 }
 
 # Turn off Bot Redirect 
 function bot {
-	ssh -t ${uname}@$account.wpengine.com "php /nas/wp/www/tools/wpe.php option-set $account redirect_bots '0' && exit ; bash"
+	ssh -tq ${uname}@$account.wpengine.com "php /nas/wp/www/tools/wpe.php option-set $account redirect_bots '0' && exit ; bash"
 	echo "Back to the Menu"
 }
 
 # HTOP a pod
 function htop {
-	ssh -t ${uname}@$account.wpengine.com "htop && exit ; bash"
+	ssh -tq ${uname}@$account.wpengine.com "htop && exit ; bash"
 	echo "Back to the Menu"
 }
 
@@ -232,7 +229,7 @@ echo "regen-config"
 echo "reinstall-core"
 echo -n "What Script would you like to run? (Type it out completely) "
 read -r script
-ssh -t ${uname}@$account.wpengine.com "sudo /nas/wp/admin $script $account && exit ; bash"
+ssh -tq ${uname}@$account.wpengine.com "sudo /nas/wp/admin $script $account && exit ; bash"
 echo "Back to the Menu"
 }
 
