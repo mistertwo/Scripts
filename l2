@@ -1,7 +1,8 @@
 #!/bin/bash
 
 #Author: BMO and JM
-#Version: 1.5
+#Version: 1.6
+# 1.6 -- Typo in the "uptime" function
 # 1.5 -- Debugged 'mig-all' function
 # 1.4 -- Debugging Time with JM getting things working more smoothly and looking better
 # 1.3 -- Added the "utime" Function
@@ -161,7 +162,7 @@ ssh -tq ${uname}@${acct}.wpengine.com "sudo zgrep -Ei ${day}\"/\"${mon} ${log} |
      exit ; bash"
 scp -q ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.access.log ${acct}.${epoch}.access.log
 echo -e "\nCurrent date is "$(date)"\n${br}"
-cat ${acct}.${epoch}.access.log | while read line; do awk -vaccount=${acct} '{printf "Log hits on %s/60 possible minutes during the %s:00-59 time period for "account".\n",$1,$2}'
+cat ${acct}.${epoch}.access.log | while read line; do awk -v account=${acct} '{printf "Log hits on %s/60 possible minutes during the %s:00-59 time period for "account".\n",$1,$2}'
 echo -e ${br}
 done
 ssh -tq ${uname}@${acct}.wpengine.com "rm ${acct}.${epoch}.access.log && exit ; bash" && rm ${acct}.${epoch}.access.log
