@@ -5,6 +5,7 @@
 # Description: All the SSH things you need to do, but are too lazy to type them in.
 # Version: 4.3
 # Recent Changes:
+# 4.3 -- Suppresed a New Line output in the accounts function
 # 4.3 -- Added the "Accounts Counting" Function
 # 4.2 -- Silenced the output of SSH and SCP
 # 4.1 -- Hurray uname function!
@@ -236,7 +237,7 @@ echo "Back to the Menu"
 
 # Count the number of installs for a Customer
 function accounts {
-ssh -tq ${uname}@${account}.wpengine.com "count=0; while read; do if [[ -d /nas/wp/www/sites/\${REPLY} ]]; then let count=count+1; fi; done < <(echo -e \$(sudo /nas/wp/ec2/cluster parent-child ${account} | sed 's/ /\\\n/g') ); echo -e \"${br}\n\${count}\n\n${br}\" ; exit"
+ssh -tq ${uname}@${account}.wpengine.com "count=0; while read; do if [[ -d /nas/wp/www/sites/\${REPLY} ]]; then let count=count+1; fi; done < <(echo -en \$(sudo /nas/wp/ec2/cluster parent-child ${account} | sed 's/ /\\\n/g') ); echo -e \"${br}\n\${count}\n\n${br}\" ; exit"
 echo "Back to the Menu"
 }
 #-----------------------Functions for this scripts function ----------------------#
