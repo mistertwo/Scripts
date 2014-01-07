@@ -3,8 +3,9 @@
 # Author: BMO
 # Name: wp
 # Description: All the SSH things you need to do, but are too lazy to type them in.
-# Version: 4.2
+# Version: 4.3
 # Recent Changes:
+# 4.3 -- Added the "Accounts Counting" Function
 # 4.2 -- Silenced the output of SSH and SCP
 # 4.1 -- Hurray uname function!
 # 4.0 -- Duplicity Restore function
@@ -233,6 +234,11 @@ ssh -tq ${uname}@$account.wpengine.com "sudo /nas/wp/admin $script $account && e
 echo "Back to the Menu"
 }
 
+# Count the number of installs for a Customer
+function accounts {
+ssh -tq ${uname}@${account}.wpengine.com "count=0; while read; do if [[ -d /nas/wp/www/sites/\${REPLY} ]]; then let count=count+1; fi; done < <(echo -e \$(sudo /nas/wp/ec2/cluster parent-child ${account} | sed 's/ /\\\n/g') ); echo -e \"${br}\n\${count}\n\n${br}\" ; exit"
+echo "Back to the Menu"
+}
 #-----------------------Functions for this scripts function ----------------------#
 #Determine the Working Environment
 function envir {
@@ -292,6 +298,7 @@ function dyn {
 	echo "10: Turn of Bot Redirect (-b)"
 	echo "11: Run HTOP on a pod (-h)" 
 	echo "12: Restore a Site or Folder from Duplicity (-d)"
+	echo "13: Count the number of Accounts a Customer has (-a)"
 	echo "Press X to exit "
 	echo -n "What would you like to do? "
 	read -r action
@@ -320,6 +327,8 @@ function dyn {
 		htop
 	elif [[ $action = 12 ]] || [[ $action = d* ]] || [[ $action = -d ]]; then
 		duplicity
+	elif [[ $action = 13 ]] || [[ $action = a* ]] || [[ $action = -a ]]; then
+		accounts
 	elif [[ $action = x ]] || [[ $action = X ]] || [[ $action = ex* ]]; then
 		opt=n
 	fi
@@ -338,6 +347,9 @@ function dyn {
 # -f  8: Find a File
 # -s  9: Run a Script (utilities)
 # -b  10: Disable Bot Redirecting
+# -h  11: Run HTOP
+# -d  12: Restore a site or files from Duplicity
+# -a  13: Count the number of Accounts
 
 function static {
 	if [[ $scnd = -l ]]; then
@@ -364,6 +376,8 @@ function static {
 		htop
 	elif [[ $scnd = -d ]]; then
 		duplicity
+	elif [[ $scnd = -a ]]; then
+		accounts
 	fi
 }
 
@@ -372,6 +386,7 @@ function static {
 if [[ -z ${uname} ]]; then 
 	setuname
 else
+br="+++++++++++++++++++++++++\n"
 while [[ -z $more ]]; do 
 	if [[ $1 = -* ]]; then
 		scnd=$1
@@ -407,6 +422,5 @@ while [[ -z $opt ]]; do
 done
 more=1
 exit 0
-#kill `ps aux | grep terminal | awk '{ print $2 }'`
 done
 fi
