@@ -1,279 +1,329 @@
 #!/bin/bash
 
-# Author: BMO
-# Name: wp
-# Description: All the SSH things you need to do, but are too lazy to type them in.
-# Version: 4.3
-# Recent Changes:
-# 4.3 -- Suppresed a New Line output in the accounts function
-# 4.3 -- Added the "Accounts Counting" Function
-# 4.2 -- Silenced the output of SSH and SCP
-# 4.1 -- Hurray uname function!
-# 4.0 -- Duplicity Restore function
-# 3.9 -- Better wp-admin and wp-includes exclusions with the Find function
-# 3.9 -- Smoothed out the exit ability of the find function
-# 3.9 -- Added htop function
+#Author: BMO and JM
+#Version: 2.0
+# 2.0 -- New "Run It" and "Menu" system
+# 2.0 -- Merged the "wp" script into the "l2" script. Lots of new functions to play with
+# 2.0 -- Skipped a release for this one ^_^
+# 1.6 -- Typo in the "uptime" function
+# 1.5 -- Debugged 'mig-all' function
+# 1.4 -- Debugging Time with JM getting things working more smoothly and looking better
+# 1.3 -- Added the "utime" Function
+# 1.2 -- Better Mac and "sed" compatibilty
+# 1.2 -- Removed the need for sudo with local commands
 
 
-#------------------------------- Define the functions -----------------------------------#
-
-# Get the accounts NGINX config file and open it using Sublime
-function config {
-	if [[ -n $action ]] || [[ -n $scnd ]]; then
-	echo "Alright, let's get the Config File!"
-		scp ${uname}@$account.wpengine.com:/nas/wp/conf/lb/sites/$account.conf $account.conf
-		nano $account.conf
-	fi
-	echo "Back to the Menu"
+#################### FUNCTIONS ####################
+#---------------------------------------------------------------------------------------------#
+#Description: Grab occurrences of all ${err} HTTP codes in an account's logs.
+#Usage l2 www-codes <account> <error code>
+function www-codes {
+if [[ -z ${three} ]]; then
+	read -p "What HTTP Code would you like to search for? " err
+else
+	err=${three}
+fi
+ssh -tq ${uname}@${acct}.wpengine.com "sudo cat /var/log/nginx/${acct}.access.log > /home/${uname}/${acct}.${epoch}.nginx && sudo cat /var/log/apache2/${acct}.access.log > /home/${uname}/${acct}.${epoch}.apache && exit ; bash"
+scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.nginx ${acct}.${epoch}.nginx && scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.apache ${acct}.${epoch}.apache
+echo -e "\nDescription: Displays requests that had highest occurrences of the ${err} HTTP Status in ${acct}'s logs. Request counts are to the left of the requests below."
+for nglog in ${acct}.${epoch}.nginx
+	do echo -e ${br}${nglog}"\n"
+		awk -F\| -v code=${err} '{if ($5 ~ code) printf "IP: %s Code: %s Referrer: %s Request: %s\n",$3,$5,$7,$10}' ${nglog}| sort| uniq -c| sort -nk1| tail
+	done
+for apachelog in ${acct}.${epoch}.apache
+	do echo -e ${br}${apachelog}"\n"
+		awk -v code=${err} '{if ($9 ~ code) printf "IP: %s Code: %s Referrer: %s Request: %s %s %s\n",$1,$9,$11,$6,$7,$8}' ${apachelog}| sort| uniq -c| sort -nk1| tail
+	done
+echo -e ${br}
+ssh -tq ${uname}@${acct}.wpengine.com "rm ${acct}.${epoch}.nginx ${acct}.${epoch}.apache && exit ; bash" && rm ${acct}.${epoch}.nginx ${acct}.${epoch}.apache
 }
+#---------------------------------------------------------------------------------------------#
 
-# Login
+#Description: Used to touch a file that is 404'ing in an account repeatedly.
+#Usage l2 tfile <account> <file name>
+function tfile { 
+if [[ -z ${three} ]]; then
+	read -p "What is the absolute path to the file would you would like to create? " file
+else
+	file=${three}
+fi
+echo -e "\nDescription: Touches a file and sets proper permissions to mitigate 404 errors. Try using www-codes first to find 404 errors in an account."
+echo ${sp}| ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/sites/${acct} && [[ -f ${file} ]] || touch ./${file} && sudo /nas/wp/admin fixperms ${acct} && exit ; bash"
+}
+#---------------------------------------------------------------------------------------------#
+
+#Description: Output lines to migrate every account associated with another account, including parent and children.
+#Usage l2 mig-all <account> <Destination Pod>
+function mig-all {
+if [[ -z ${three} ]]; then
+	read -p "What Pod are you moving to? " destpod
+else
+	destpod=${three}
+fi
+ssh -tq ${uname}@${acct}.wpengine.com "sudo /nas/wp/ec2/cluster parent-child ${acct} > /home/${uname}/result.${epoch}.txt && hostname | cut -d- -f2 > /home/${uname}/host.${epoch}.txt && exit ; bash"
+scp -q ${uname}@${acct}.wpengine.com:/home/${uname}/result.${epoch}.txt result.${epoch}.txt && scp -q ${uname}@${acct}.wpengine.com:/home/${uname}/host.${epoch}.txt host.${epoch}.txt
+cur-pod=$(cat host.${epoch}.txt)
+echo -e "\nDescription: Output lines to migrate every account associated with another account, including parent and children."
+echo -e ${br}
+echo -e $(cat result.${epoch}.txt | sed 's/ /\\n/g') | 
+while read
+do echo -e "sudo /nas/wp/ec2/cluster move-to-preferred-cluster ${cur-pod} ${REPLY} ${destpod}"
+done
+echo -e "\n${br}"
+ssh -tq ${uname}@${acct}.wpengine.com "rm result.${epoch}.txt host.${epoch}.txt && exit ; bash" && rm result.${epoch}.txt host.${epoch}.txt
+}
+#---------------------------------------------------------------------------------------------#
+
+#ng-logs - show log hits from nginx that took the longest time to complete.
+# Usage L2 ng-logs <account>
+function ng-logs { 
+ssh -tq ${uname}@${acct}.wpengine.com "sudo cat /var/log/nginx/${acct}.access.log > /home/${uname}/${acct}.${epoch}.nginx && exit ; bash"
+scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.nginx ${acct}.${epoch}.nginx
+echo -e "\nDescription: Nginx log entries below are sorted by Page Load Time (8th | delimited column).\n"
+echo -e "\n${br}Slow requests that did NOT receive a 200 OK HTTP Status Code.\n"
+awk '!/\|200\|/' ${acct}.${epoch}.nginx| sort -t\| -rnk8| head
+echo -e "\n${br}Slow requests that received 200 OK HTTP Status Code.\n"
+awk '/\|200\|/' ${acct}.${epoch}.nginx| sort -t\| -rnk8| head
+echo -e "${br}"
+ssh -tq ${uname}@${acct}.wpengine.com "rm ${acct}.${epoch}.nginx && exit ; bash" && rm ${acct}.${epoch}.nginx
+}
+#---------------------------------------------------------------------------------------------#
+
+#sql-slow - show problematic sql infos.
+#usage l2 sql-slow <account>
+function sql-slow { 
+echo -e "\nDescription: Display problematic MySQL information. (DO NOT PASTE THIS COMPLETE OUTPUT TO A CUSTOMER)\n"
+echo -e "\n"${br}"Show MySQL users that hit the slow query log the most.\n"
+ssh -tq ${uname}@${acct}.wpengine.com "sudo awk '/User@Host/ {print $3}' /var/log/mysql/mysql-slow.log| cut -d\[ -f1| sort| uniq -c| sort -nk1| tail -10 && exit ; bash"
+echo -e ${br}"Count of which PHP lines that created slow queries: \n"
+ssh -tq ${uname}@${acct}.wpengine.com "sudo grep -oP '(?<=\[\/nas\/wp\/www\/cluster\-).*(?=\])' /var/log/mysql/mysql-slow.log| sort| uniq -c| sort -nk1| tail -10 && exit ; bash"
+echo -e ${br}"Heavy SQL Tables based on table size vs. table rows: \n"
+ssh -tq ${uname}@${acct}.wpengine.com "sudo mysql -e \"select concat(table_schema, '.', table_name), concat(round(table_rows / 1000000, 2), 'M') rows, concat(round(data_length / ( 1024 * 1024 * 1024 ), 2), 'G') DATA, concat(round(index_length / ( 1024 * 1024 * 1024 ), 2), 'G') idx, concat(round(( data_length + index_length ) / ( 1024 * 1024 * 1024 ), 2), 'G') total_size, round(index_length / data_length, 2) idxfrac from information_schema.TABLES ORDER by data_length + index_length DESC limit 10;\" && exit ; bash"
+echo -e ${br}
+}
+#---------------------------------------------------------------------------------------------#
+
+#sql-heavy-rows - show which tables have over 5000 rows for an account.
+#Usage l2 sql-heavey-rows <account>
+function sql-heavy-rows {
+echo -e "\n"${br}"Account: "${acct}"\nDatabase: wp_"${acct}"\n"${br}
+ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/sites/${acct} && sudo mysql wp_${acct} -e 'show table status where rows > 5000;'| awk '{print \$1,\$5 }'| sort -nk2| column -t && exit ; bash"
+echo -e ${br}
+}
+#---------------------------------------------------------------------------------------------#
+
+# show load that was 1.5x the number of processer cores.
+# Usage l2 hiload <account> <DD>
+function hiload { 
+if [[ -z ${three} ]]; then
+	read -p "Which Day (must be in 2 digit format)? " day
+else
+	day=${three}
+fi
+echo -e "\n\nDescription: Show times when load was over 1.5x the number of processor cores for this server."
+echo -e ${br}
+ssh -tq ${uname}@${acct}.wpengine.com "if [[ ! -f /var/log/sysstat/sa${day} ]]; then echo -e \"\nInfo for ${day} does not exist, please try again.\"; else sudo sar -q -f /var/log/sysstat/sa${day}| awk -vcpu=$(grep ^processor /proc/cpuinfo| wc -l) '{if (\$5 > (1.5 * cpu)) print}'; fi && exit ; bash"
+echo -e "\n${br}"
+}
+#---------------------------------------------------------------------------------------------#
+
+#wp-plugins - show enabled plugins for an account.
+#Usage l2 wp-plugins <account>
+function wp-plugins {
+ssh -tq ${uname}@${acct}.wpengine.com "sudo -v && sudo grep \"table_prefix\" /nas/wp/www/sites/${acct}/wp-config.php > /home/${uname}/pf.${epoch}.txt && exit ; bash"
+scp -q ${uname}@${acct}.wpengine.com:/home/${uname}/pf.${epoch}.txt pf.${epoch}.txt
+pf=$(awk 'tolower($0) ~ /^\$table_prefix/ {gsub(/\"|;|'"'"'/,""); print $3}' pf.${epoch}.txt)
+db=wp_${acct}
+echo -e "\n"${br}"Enabled plugins for account "${acct}": \n"
+ssh -tq ${uname}@${acct}.wpengine.com "sudo mysql ${db} -e \"select * from ${pf}options where option_name='active_plugins';\"| tr '\"' '\n'| awk -F\/ '/^[a-zA-Z]/ {print \$1}'| sed 1d && exit ; bash"
+echo -e ${br}
+ssh -tq ${uname}@${acct}.wpengine.com "rm pf.${epoch}.txt && exit ; bash" && rm pf.${epoch}.txt
+}
+#---------------------------------------------------------------------------------------------#
+
+#Description: Shows how many min/hr had log hits. Ideally 60 for busy site meaning at least one hit per minute happened, and, thus, no downtime.
+#Usage l2 uptime <account> <two-digit-day> <three-digit-month> (IE: l2 uptime bmoore 12 dec)
+function uptime {
+if [[ -z ${three} ]]; then 
+	read -p "Which Day (must be in 2 digit format)? " day
+	read -p "Which Month (must be in 3 character format, ie. 'Jan')? " mon
+elif [[ ${three} != [0-9][0-9] ]]; then
+	echo -e "\nLooks like you got it wrong!\nUsage - l2 uptime <account> <two-digit-day> <three-digit-month> (IE: l2 uptime ${acct} 12 dec)\nlets try again.\n"
+	read -p "Which Day (must be in 2 digit format)? " day
+    read -p "Which Month (must be in 3 character format, ie. 'Jan')? " mon
+else
+day=${three}
+mon=${four}
+fi
+log="/var/log/apache2/${acct}.access.log"
+ssh -tq ${uname}@${acct}.wpengine.com "sudo zgrep -Ei ${day}\"/\"${mon} ${log} | awk '{gsub(/\[|/,\"\"); print \$4}'| sed 's/:[0-9][0-9]$//g'| sort| uniq| sed 's/:[0-9][0-9]$//g'| uniq -c > /home/${uname}/${acct}.${epoch}.access.log
+ 	 sudo zgrep -Ei ${day}\"/\"${mon} ${log}.1 | awk '{gsub(/\[|/,\"\"); print \$4}'| sed 's/:[0-9][0-9]$//g'| sort| uniq| sed 's/:[0-9][0-9]$//g'| uniq -c >> /home/${uname}/${acct}.${epoch}.access.log
+  	 sudo zgrep -Ei ${day}\"/\"${mon} ${log}.2.gz | awk '{gsub(/\[|/,\"\"); print \$4}'| sed 's/:[0-9][0-9]$//g'| sort| uniq| sed 's/:[0-9][0-9]$//g'| uniq -c >> /home/${uname}/${acct}.${epoch}.access.log
+   	 sudo zgrep -Ei ${day}\"/\"${mon} ${log}.3.gz | awk '{gsub(/\[|/,\"\"); print \$4}'| sed 's/:[0-9][0-9]$//g'| sort| uniq| sed 's/:[0-9][0-9]$//g'| uniq -c >> /home/${uname}/${acct}.${epoch}.access.log
+     sudo zgrep -Ei ${day}\"/\"${mon} ${log}.4.gz | awk '{gsub(/\[|/,\"\"); print \$4}'| sed 's/:[0-9][0-9]$//g'| sort| uniq| sed 's/:[0-9][0-9]$//g'| uniq -c >> /home/${uname}/${acct}.${epoch}.access.log
+     sudo zgrep -Ei ${day}\"/\"${mon} ${log}.5.gz | awk '{gsub(/\[|/,\"\"); print \$4}'| sed 's/:[0-9][0-9]$//g'| sort| uniq| sed 's/:[0-9][0-9]$//g'| uniq -c >> /home/${uname}/${acct}.${epoch}.access.log
+     exit ; bash"
+scp -q ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.access.log ${acct}.${epoch}.access.log
+echo -e "\nCurrent date is "$(date)"\n${br}"
+cat ${acct}.${epoch}.access.log | while read line; do awk -v account=${acct} '{printf "Log hits on %s/60 possible minutes during the %s:00-59 time period for "account".\n",$1,$2}'
+echo -e ${br}
+done
+ssh -tq ${uname}@${acct}.wpengine.com "rm ${acct}.${epoch}.access.log && exit ; bash" && rm ${acct}.${epoch}.access.log
+}
+#---------------------------------------------------------------------------------------------#
+
+# Description: Get the accounts NGINX config file and open it using Nano
+#Usage: l2 nginx-conf <account>
+function nginx-config {
+	scp -q ${uname}@${acct}.wpengine.com:/nas/wp/conf/lb/sites/${acct}.conf ${acct}.${epoch}.conf
+	nano ${acct}.${epoch}.conf
+	rm ${acct}.${epoch}.conf
+}
+#---------------------------------------------------------------------------------------------#
+
+# Description: Login to an Account via SSH (location optional)
+# UsageL l2 login <account> <environment> <location>
 function login {
 	envir
-	if [[ -n $frth ]]; then
-		echo "Alright, Logging into the $envir and going to $frth"
-			sl -ale
-			clear
-			ssh -tq ${uname}@$account.wpengine.com "cd /nas/wp/www/$envir/$account/$frth ; bash"
-		more
+	if [[ -n ${four} ]]; then
+		echo -e ${br}"Alright, Logging into the ${envir} and going to ${four}\n"
+			ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct}/${four}; bash"
 	else
-		echo "Alright, logging into the $envir Server"
-			sl -ale
-			clear
-			ssh -tq ${uname}@$account.wpengine.com "cd /nas/wp/www/$envir/$account ; bash"
+		echo -e ${br}"Alright, logging into the ${envir} Server\n"
+			ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct}; bash"
 	fi
-	echo "Back to the Menu"
+	echo
 }
+#---------------------------------------------------------------------------------------------#
 
-# Get a file
-function get {
-	envir
-	if [[ -n $frth ]] && [[ -n $fth ]]; then
-		dir=$frth
-		file=$fth
-	elif [[ -n $frth ]] && [[ -z $fth ]]; then
-		dir=$frth
-		echo -n "Where do you want it local? "
-		read -r file
-	else
-		echo "Getting the file from the $envir Server"
-		echo -n "Path to file? "
-		read -r dir
-		echo -n "Where do you want it local? "
-		read -r file
-	fi
-		scp -rq ${uname}@$account.wpengine.com:/nas/wp/www/$envir/$account/$dir $file
-	echo "Back to the Menu"
-}
-
-# Put a file
-function put {
-	envir
-	if [[ -n $frth ]] && [[ -n $fth ]]; then
-		file=$frth
-		dir=$fth
-	elif [[ -n $frth ]] && [[ -z $fth ]]; then
-		file=$frth
-		echo -n "Where do you want it on the server? "
-		read -r dir
-	else
-		echo "Putting the File on the $envir Server"
-		echo -n "Where is the file? "
-		read -r file
-		echo -n "Where do you want it on the server? "
-		read -r dir
-	fi
-		scp -rq $file ${uname}@$account.wpengine.com:/home/${uname}/$file
-		ssh -tq ${uname}@$account.wpengine.com "sudo mv $file /nas/wp/www/$envir/$account/$dir && exit ; bash"
-	echo "Back to the Menu"
-}
-
-#Find and list a file name
+# Description: Find either a File or a String of Text in the account
+# Usage: l2 find <account> <envir> <file/text>
 function find {
 	envir
-	if [[ -n $frth ]]; then
-		search=$frth
-	elif [[ -z $frth ]]; then
-		echo -n "What file are you looking for? "
-		read -r search 
+	if [[ -n ${four} ]]; then
+		search=${four}
+	elif [[ -z ${four} ]]; then
+		echo -e ${br}
+		read -p "What are you looking for? " search
+		echo
 	fi
-	echo -n " Is this a File or a String that you are looking for? "
-	read -r which
-	if [[ $which = f* ]]; then
-		ssh -tq ${uname}@$account.wpengine.com "cd /nas/wp/www/$envir/$account/ && find . -type f -name '"*$search*"' ! -path '"./wp-admin/*"' ! -path '"./wp-includes/*"' > /home/${uname}/find.txt && exit ; bash"
-		scp -rq ${uname}@$account.wpengine.com:/home/${uname}/find.txt find.txt
-		nl find.txt
+	read -p "Is this a File or a String that you are looking for? " which
+	echo -e "\n"${br}
+	if [[ ${which} = f* ]]; then
+		ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct}/ && find . -type f -name '"*${search}*"' ! -path '"./wp-admin/*"' ! -path '"./wp-includes/*"' > /home/${uname}/find.${epoch}.txt && exit ; bash"
+		scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/find.${epoch}.txt find.${epoch}.txt
+		nl find.${epoch}.txt
 	else
-		ssh -tq ${uname}@$account.wpengine.com "cd /nas/wp/www/$envir/$account && sudo ack-grep --ignore-dir=wp-includes --ignore-dir=wp-admin --nosql "$search" > /home/${uname}/ack.txt && exit ; bash"
-		scp -rq ${uname}@$account.wpengine.com:/home/${uname}/ack.txt ack.txt
-		nl ack.txt
-		awk -F':' '{print $1}' ack.txt > find.txt
-		awk -F':' '{print $2}' ack.txt > line.txt
+		ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct} && sudo ack-grep --ignore-dir=wp-includes --ignore-dir=wp-admin --nosql "${search}" > /home/${uname}/ack.${epoch}.txt && exit ; bash"
+		scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/ack.${epoch}.txt ack.${epoch}.txt
+		nl ack.${epoch}.txt
+		awk -F':' '{print $1}' ack.${epoch}.txt > find.${epoch}.txt
+		awk -F':' '{print $2}' ack.${epoch}.txt > line.${epoch}.txt
 	fi
-	echo -n "Which File would you like to Open? Pick a number. "
-	read -r num
-		while [[ $num = [0-9]* ]]; do
-			pick=$(sed -n "$num"p find.txt)
-			if [[ $which != f* ]]; then
-				pickline=$(sed -n "$num"p line.txt)
-				ssh -tq ${uname}@$account.wpengine.com "cd /nas/wp/www/$envir/$account && sudo nano +$pickline $pick && exit ; bash"
-				nl ack.txt
+	echo -e ${br}
+	read -p "Which File would you like to Open? Pick a number. " num
+		while [[ ${num} = [0-9]* ]]; do
+			pick=$(sed -n "${num}"p find.${epoch}.txt)
+			if [[ ${which} != f* ]]; then
+				pickline=$(sed -n "${num}"p line.${epoch}.txt)
+				ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct} && sudo nano +${pickline} ${pick} && exit ; bash"
+				echo
+				nl ack.${epoch}.txt
 			else
-				ssh -tq ${uname}@$account.wpengine.com "cd /nas/wp/www/$envir/$account && sudo nano $pick && exit ; bash"
-				nl find.txt
+				ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct} && sudo nano ${pick} && exit ; bash"
+				echo
+				nl find.${epoch}.txt
 			fi
-		echo -n "Would you like to open another? Press X to finish "
-		read -r num
+		echo -e ${br}
+		read -p "Would you like to open another? Press X to finish " num
 		done
-		opt=n
+	ssh -tq ${uname}@${acct}.wpengine.com "rm -f find.${epoch}.txt ack.${epoch}.txt; exit" && rm -f find.${epoch}.txt ack.${epoch}.txt line.${epoch}.txt
 }
+#---------------------------------------------------------------------------------------------#
 
-# Make a .tar of /wp-content folder on production
-function tar {
-	envir
-	ssh -tq ${uname}@$account.wpengine.com "cd /nas/wp/www/$envir/$account/_wpeprivate && sudo tar -cvf $account-wp-content.tar ../wp-content/* && exit ; bash"
-	echo -n "Would you like to Download this .tar? Yes or No "
-	read -r down
-	if [[ $down = y* ]]; then
-		scp ${uname}@$account.wpengine.com:/nas/wp/www/$envir/$account/_wpeprivate/$account-wp-content.tar $account-wp-content.tar 
-		#tar -xvf $account-wp-content.tar && thunar $account/wp-content  #Runs local and opens file
-	fi
-	echo "Back to the Menu"
-}
-
-# Get the files for a Site or Specific Folder from our Duplicity Backup (full backup)
+# Description: Get the files for a Site or Specific Folder from our Duplicity Backup (full backup)
+# Usage: l2 duplicity <account> <date> <file/folder>
 function duplicity {
-	if [[ $thrd = [0-9]* ]]; then
-		date=$thrd
+	if [[ ${three} = [0-9]* ]]; then
+		date=${three}
 	else
 		# Get the Date to restore from
-		echo -n "From what date? YYYMMDD "
-		read -r date
+		read -p "From what date? YYYMMDD " date
+		echo
     fi
-    if [[ -n $frth ]]; then
-    	folder=$frth
+    if [[ -n ${four} ]]; then
+    	folder=${four}
     else
 		# Optionally, get a specific folder
-		echo -n "Which Folder? (Press enter for the whole site) "
-		read -r folder
+		read -p "Which Folder or File? (Press enter for the whole site) " folder
+		echo -e "\n"${br}
 	fi
 	# Do the things
-	if [[ -n $folder ]]; then
-		ssh -tq ${uname}@$account.wpengine.com "cd /var/tmp && sudo duplicity_restore_v2 -s $account -d $date -r $folder && sudo mv -f $account /home/${uname}/ && exit ; bash"
+	if [[ -n ${folder} ]]; then
+		ssh -tq ${uname}@${acct}.wpengine.com "cd /var/tmp && sudo duplicity_restore_v2 -s ${acct} -d ${date} -r ${folder} && sudo mv -f ${acct} /home/${uname}/ && exit ; bash"
 	else
-		ssh -tq ${uname}@$account.wpengine.com "cd /var/tmp && sudo duplicity_restore_v2 -s $account -d $date -r / && sudo mv -f $account /home/${uname}/ && exit ; bash"
+		ssh -tq ${uname}@${acct}.wpengine.com "cd /var/tmp && sudo duplicity_restore_v2 -s ${acct} -d ${date} -r / && sudo mv -f ${acct} /home/${uname}/ && exit ; bash"
 	fi
-		#ssh -tq ${uname}@$account.wpengine.com "cd /var/tmp &&  && exit ; bash"
-	# Optional, Tar up the results and download them.
+	# You did it! Now what would you like to do with this file?
 	clean=n
-	while [[ $clean = n* ]] || [[ $clean = N* ]]; do
-	echo -n "Would you like to Download, Rsync, or Move the results? (press Enter for None of these) "
-	read -r option
-		if [[ $option = d* ]] || [[ $option = D* ]]; then
-			ssh -tq ${uname}@$account.wpengine.com "tar -cvf $account-duplicity.tar $account && exit ; bash"
-			scp ${uname}@$account.wpengine.com:$account-duplicity.tar $account-duplicity.tar 
-		elif [[ $option = r* ]] || [[ $option = R* ]]; then
-			echo "Sending you in as Root -> Best of luck soldier. (~sad trumpet plays in the background~)"
-			ssh -tq ${uname}@bmoore.wpengine.com "sudo ssh root@$account.wpengine.com && exit ; bash"
-		elif [[ $option = m* ]] || [[ $option = M* ]]; then
-			echo "Tar it or as is? "
-			read -r method
-				if [[ $method = t* ]]; then
-					ssh -tq ${uname}@$account.wpengine.com "tar -cvf $account-duplicity.tar $account && sudo mv $account-duplicity.tar /nas/wp/www/sites/$account/_wpeprivate/ && exit ; bash"
+	while [[ ${clean} = n* ]] || [[ ${clean} = N* ]]; do
+	echo -e "\n"${br}
+	read -p "Would you like to Download, Rsync, or Move the results? (press Enter for None of these) " option
+	echo -e ${br}
+		if [[ ${option} = d* ]] || [[ ${option} = D* ]]; then
+			ssh -tq ${uname}@${acct}.wpengine.com "tar -cvf ${acct}-duplicity.${epoch}.tar ${acct} && exit ; bash"
+			scp ${uname}@${acct}.wpengine.com:${acct}-duplicity.${epoch}.tar ${acct}-duplicity.${epoch}.tar 
+		elif [[ ${option} = r* ]] || [[ ${option} = R* ]]; then
+			echo -e "\nSending you in as Root -> Best of luck soldier. (~sad trumpet plays in the background~)\n"
+			ssh -tq ${uname}@bmoore.wpengine.com "sudo ssh root@${acct}.wpengine.com && exit ; bash"
+		elif [[ ${option} = m* ]] || [[ ${option} = M* ]]; then
+			read -p "Tar it or as is? " method
+				if [[ ${method} = t* ]]; then
+					ssh -tq ${uname}@${acct}.wpengine.com "tar -cvf ${acct}-duplicity.${epoch}.tar ${acct} && sudo mv ${acct}-duplicity.${epoch}.tar /nas/wp/www/sites/${acct}/_wpeprivate/ && exit ; bash"
 				else
-					ssh -tq ${uname}@$account.wpengine.com "sudo mv -f $account /nas/wp/www/sites/$account/_wpeprivate/ && exit ; bash"
+					ssh -tq ${uname}@${acct}.wpengine.com "sudo mv -f ${acct} /nas/wp/www/sites/${acct}/_wpeprivate/ && exit ; bash"
 				fi
-		elif [[ -z $option ]]; then
-			echo "Alright, dropping you in the folder, have fun."
-			ssh -tq ${uname}@$account.wpengine.com "cd $acount ; bash"
+		elif [[ -z ${option} ]]; then
+			echo "\nAlright, dropping you in the folder, have fun.\n"
+			ssh -tq ${uname}@${acct}.wpengine.com
 		fi
-	echo "All Done? Clean up? Yes or No "
-	read -r clean
+	echo -e ${br}
+	read -p "All Done? Clean up? Yes or No " clean
+	echo
 	done
 	sleep .5
-	ssh -tq ${uname}@$account.wpengine.com "sudo rm -rf $account && exit ; bash"
-	echo "Back to the Menu"
+	ssh -tq ${uname}@${acct}.wpengine.com "sudo rm -rf ${acct} && if [[ -f ${acct}-duplicity.${epoch}.tar ]]; then rm -f ${acct}-duplicity.${epoch}.tar; fi && exit; bash"
 }
+#---------------------------------------------------------------------------------------------#
 
-# Uncancel the site
-function uncan {
-	ssh -tq ${uname}@$account.wpengine.com "sudo /nas/wp/ec2/cluster uncancel-site $account && exit ; bash"
-	echo "Back to the Menu"
-}
-
-# Clear the Rewrite Rules
-function rewrite {
-	ssh -tq ${uname}@$account.wpengine.com "sudo php /nas/wp/www/tools/wpe.php option-set $account rewrites NULL && exit ; bash"
-	echo "Back to the Menu"
-}
-
-# Turn off Bot Redirect 
-function bot {
-	ssh -tq ${uname}@$account.wpengine.com "php /nas/wp/www/tools/wpe.php option-set $account redirect_bots '0' && exit ; bash"
-	echo "Back to the Menu"
-}
-
-# HTOP a pod
-function htop {
-	ssh -tq ${uname}@$account.wpengine.com "htop && exit ; bash"
-	echo "Back to the Menu"
-}
-
-# Run a Utility Script Tool thing from Shell.
-function script {
-# What Script would you like to run?
-echo "List of Scripts:"
-echo "deploy"
-#echo "perm-reload-apply"
-echo "fixperms"
-echo "purge-varnish"
-echo "regen-config"
-echo "reinstall-core"
-echo -n "What Script would you like to run? (Type it out completely) "
-read -r script
-ssh -tq ${uname}@$account.wpengine.com "sudo /nas/wp/admin $script $account && exit ; bash"
-echo "Back to the Menu"
-}
-
-# Count the number of installs for a Customer
-function accounts {
-ssh -tq ${uname}@${account}.wpengine.com "count=0; while read; do if [[ -d /nas/wp/www/sites/\${REPLY} ]]; then let count=count+1; fi; done < <(echo -en \$(sudo /nas/wp/ec2/cluster parent-child ${account} | sed 's/ /\\\n/g') ); echo -e \"${br}\n\${count}\n\n${br}\" ; exit"
-echo "Back to the Menu"
-}
-#-----------------------Functions for this scripts function ----------------------#
-#Determine the Working Environment
+#################### Determine Environment ####################
 function envir {
-if [[ -n $thrd ]] && [[ -z $opt ]]; then
-	if [[ $thrd = -p ]]; then
+if [[ -n ${three} ]]; then
+	if [[ ${three} = p* ]]; then
 		envir=sites
-	elif [[ $thrd = -s ]]; then
+	elif [[ ${three} = s* ]]; then
 		envir=staging
 	else
-		echo -n "Is this the Production or the Staging Server? "
-	    read -r env
-		if [[ $env = p* ]] || [[ $env = -p ]]; then
+		read -p "Is this the Production or the Staging Server? " env
+		echo
+		if [[ ${env} = p* ]]; then
 			envir=sites
-		elif [[ $env = s* ]] || [[ $env = -s ]]; then
+		elif [[ ${env} = s* ]]; then
 			envir=staging
 		fi
 	fi
-elif [[ -z $thrd ]]; then
-	echo -n "Is this the Production or the Staging Server? "
-	read -r env
-		if [[ $env = p* ]] || [[ $env = -p ]]; then
+elif [[ -z ${three} ]]; then
+	read -p "Is this the Production or the Staging Server? " env
+	echo
+		if [[ ${env} = p* ]]; then
 			envir=sites
-		elif [[ $env = s* ]] || [[ $env = -s ]]; then
+		elif [[ ${env} = s* ]]; then
 			envir=staging
 		fi
 fi
 }
+#################### USER NAME ####################
 
-# Get the Account name when needed
-function acnt {
-	echo -n "What is the account name we will be working with? "
-	read -r account
-}
-# Set Uname
 function setuname {
 if [[ -z ${uname} ]]; then
 	read -p "What is your SSH User Name? " name
@@ -285,143 +335,66 @@ fi
 }
 uname=
 
-#List the options
-function dyn {
-	echo "1: Login to SSH (-l)"
-	echo "2: Get Something (-g)"
-	echo "3: Put Something (-p)"
-	echo "4: Purge the Rewrite Rules (-r)"
-	echo "5: Uncancel a Site (-u)"
-	echo "6: Tar the /wp-content directory (-t)"
-	echo "7: Get the NGINX Config file (-c)"
-	echo "8: Find a File (-f)"
-	echo "9: Run a Script from the Utilities Page (-s)"
-	echo "10: Turn of Bot Redirect (-b)"
-	echo "11: Run HTOP on a pod (-h)" 
-	echo "12: Restore a Site or Folder from Duplicity (-d)"
-	echo "13: Count the number of Accounts a Customer has (-a)"
-	echo "Press X to exit "
-	echo -n "What would you like to do? "
-	read -r action
-	## Dynamic Actions
-	if	[[ $action = 1 ]] || [[ $action = l* ]] || [[ $action = -l ]]; then
-		login
-	elif [[ $action = 2 ]] || [[ $action = g* ]] || [[ $action = -g ]]; then
-		get
-	elif [[ $action = 3 ]] || [[ $action = p* ]] || [[ $action = -p ]]; then
-		put
-	elif [[ $action = 4 ]] || [[ $action = r* ]] || [[ $action = -r ]]; then
-		rewrite
-	elif [[ $action = 5 ]] || [[ $action = u* ]] || [[ $action = -u ]]; then
-		uncan
-	elif [[ $action = 6 ]] || [[ $action = t* ]] || [[ $action = -t ]]; then
-		tar
-	elif [[ $action = 7 ]] || [[ $action = c* ]] || [[ $action = -c ]]; then
-		config
-	elif [[ $action = 8 ]] || [[ $action = f* ]] || [[ $action = -f ]]; then
-		find
-	elif [[ $action = 9 ]] || [[ $action = s* ]] || [[ $action = -s ]]; then
-		script
-	elif [[ $action = 10 ]] || [[ $action = b* ]] || [[ $action = -b ]]; then
-		bot
-	elif [[ $action = 11 ]] || [[ $action = h* ]] || [[ $action = -h ]]; then
-		htop
-	elif [[ $action = 12 ]] || [[ $action = d* ]] || [[ $action = -d ]]; then
-		duplicity
-	elif [[ $action = 13 ]] || [[ $action = a* ]] || [[ $action = -a ]]; then
-		accounts
-	elif [[ $action = x ]] || [[ $action = X ]] || [[ $action = ex* ]]; then
-		opt=n
-	fi
+#################### Get Account ####################
+function account {
+if [[ -z ${acct} ]]; then
+	read -p "What Account are we working with? " acct
+fi
 }
 
-## If Args are static
+#################### MENU ####################
 
-# Available Args are as follows:
-# -l  1: Login to SSH
-# -g  2: Get Something
-# -p  3: Put Something
-# -r  4: Purge the Rewrite Rules
-# -u  5: Uncancel a Site
-# -t  6: Tar the /wp-content directory
-# -c  7: Get the NGINX Config file
-# -f  8: Find a File
-# -s  9: Run a Script (utilities)
-# -b  10: Disable Bot Redirecting
-# -h  11: Run HTOP
-# -d  12: Restore a site or files from Duplicity
-# -a  13: Count the number of Accounts
-
-function static {
-	if [[ $scnd = -l ]]; then
-		login
-	elif [[ $scnd = -g ]]; then
-		get
-	elif [[ $scnd = -p ]]; then
-		put
-	elif [[ $scnd = -r ]]; then
-		rewrite
-	elif [[ $scnd = -u ]]; then
-		uncan
-	elif [[ $scnd = -t ]]; then
-		tar
-	elif [[ $scnd = -c ]]; then
-		config
-	elif [[ $scnd = -f ]]; then
-		find
-	elif [[ $scnd = -s ]]; then
-		script
-	elif [[ $scnd = -b ]]; then
-		bot
-	elif [[ $scnd = -h ]]; then
-		htop
-	elif [[ $scnd = -d ]]; then
-		duplicity
-	elif [[ $scnd = -a ]]; then
-		accounts
-	fi
+function menu {
+while [[ -z ${opt} ]]; do
+	echo -e "${br}Available tasks:\n"
+	echo -e "www-codes => Description: Grab occurrences of a certain HTTP code in an account's logs."
+	echo -e "tfile => Description: Used to touch a file that is 404'ing in an account repeatedly."
+	echo -e "mig-all => Description: Output lines to migrate every account associated with another account, including parent and children."
+	echo -e "ng-logs => Description: Show log hits from nginx that took the longest time to complete."
+	echo -e "sql-slow => Description: Show problematic sql information."
+	echo -e "sql-heavy-rows => Description: Show which tables have over 5000 rows for an account."
+	echo -e "hiload => Description: Show load that was 1.5x the number of processer cores."
+	echo -e "wp-plugins => Description: Show enabled plugins for an account."
+	echo -e "uptime => Description: Shows how many min/hr had log hits. Ideally 60 for busy site meaning at least one hit per minute happened, and, thus, no downtime."
+	echo -e "nginx-confg =>  Description: Get the accounts NGINX config file and open it using Nano"
+	echo -e "login =>  Description: Login to an Account via SSH (location optional)"
+	echo -e "find => Description: Find either a File or a String of Text in the account"
+	echo -e "duplicity => Description: Get the files for a Site or Specific Folder from our Duplicity Backup (full backup)"
+	echo -e ${br}
+	read -p "Type function name that you wish to use: " opt
+	echo
+account
+declare -F ${opt} &>/dev/null && echo && ${opt} && echo && exit 0 || echo -e "${opt}\nYou Didn't do it right! Try again.\n"; opt=""
+done
 }
 
+#################### RUN IT ####################
 
-#---------------- Run it! ------------------------#
-if [[ -z ${uname} ]]; then 
+acct=${2}
+three=${3}
+four=${4}
+br="++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n"
+epoch=$(date +%s)
+if [[ -z ${uname} ]]; then
 	setuname
 else
-br="+++++++++++++++++++++++++\n"
-while [[ -z $more ]]; do 
-	if [[ $1 = -* ]]; then
-		scnd=$1
-		thrd=$2
-		frth=$3
-		fth=$4
-		acnt
-		static
-	elif [[ -n $1 ]] && [[ -n $2 ]]; then
-		account=$1
-		scnd=$2
-		thrd=$3
-		frth=$4
-		fth=$5
-		static
-	elif [[ -n $1 ]] && [[ -z $2 ]]; then
-		account=$1
-		dyn
-	elif [[ -z $1 ]]; then
-		if [[ -z $account ]]; then
-			acnt
-			dyn
-		else
-			dyn
-		fi
+	if [[ -n ${1} ]]; then
+		echo -e "\nYour current username is set to: \033[1;31m"${uname}"\033[1;000m"
+		account
+		declare -F ${1} &>/dev/null && echo && ${1} && echo && exit 0 || 
+		echo -e "\nUsage is: l2 <function> <account> <optional argument>\n"
+		acct=
+		three=
+		four=
+		menu
+	elif [[ ${1} = uname ]]; then
+		setuname
+	else
+		echo -e "\nUsage is: l2 <function> <account> <optional argument>\n"
+		acct=
+		three=
+		four=
+		menu
 	fi
-while [[ -z $opt ]]; do
-	scnd=""
-	thrd=""
-	frth=""
-	fth=""
-	dyn
-done
-more=1
-exit 0
-done
 fi
+#---------------------------------------------------------------------------------------------#
