@@ -12,8 +12,8 @@ echo "Alright Othello, lets do this!"
 function purge { 
 # Purge on Othello
 echo "Alright Othello, Kill Em Dead!"
-	rm -r /home/bmoore/Dump/*
-	rm -r /home/bmoore/Pictures/Screenshots/*
+	rm -rf /home/bmoore/Dump/*
+	rm -rf /home/bmoore/Pictures/Screenshots/*
 }
 
 

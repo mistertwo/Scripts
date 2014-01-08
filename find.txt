@@ -1,4 +1,0 @@
-./test.php
-./_wpeprivate/bmoore/wp-content/uploads/test.php
-./wp-content/uploads/test.php
-./wp-content/plugins/bwp-minify/min/builder/test.php

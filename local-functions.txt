@@ -1,2 +1,0 @@
-function cprop { [[ -z "$*" ]] && echo -e "\n\nDescription: Check propagation of a domain name.\nUsage: cprop <domain_name.tld>\n\n" && return 0 || domain=${1}; echo -e "\nDomain: "$domain"\n"; for resolver in 4.2.2.1 8.8.8.8 $(dig $(dig NS $domain +short| sed '1d; s/.$//g') +short| grep -v root-servers.net); do r_host=$(host $resolver| awk '{print $NF}'); a_rec=$(dig @$resolver A $domain +short); echo -e "Resolver: "${resolver}" ("${r_host}")\nA: "${a_rec}"\n"; done; }; cprop
-
