@@ -373,17 +373,21 @@ done
 acct=${2}
 three=${3}
 four=${4}
-five=${5}
 br="++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n"
 epoch=$(date +%s)
 if [[ -z ${uname} ]]; then
 	setuname
 else
 	if [[ -n ${1} ]]; then
-	echo -e "\nYour current username is set to: \033[1;31m"${uname}"\033[1;000m"
-	account
-	declare -F ${1} &>/dev/null && echo && ${1} && echo && exit 0 || opt=""
-elif [[ ${1} = uname ]]; then
+		echo -e "\nYour current username is set to: \033[1;31m"${uname}"\033[1;000m"
+		account
+		declare -F ${1} &>/dev/null && echo && ${1} && echo && exit 0 || 
+		echo -e "\nUsage is: l2 <function> <account> <optional argument>\n"
+		acct=
+		three=
+		four=
+		menu
+	elif [[ ${1} = uname ]]; then
 		setuname
 	else
 		echo -e "\nUsage is: l2 <function> <account> <optional argument>\n"
