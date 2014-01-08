@@ -1,7 +1,10 @@
 #!/bin/bash
 
 #Author: BMO and JM
-#Version: 1.6
+#Version: 2.0
+# 2.0 -- New "Run It" and "Menu" system
+# 2.0 -- Merged the "wp" script into the "l2" script. Lots of new functions to play with
+# 2.0 -- Skipped a release for this one ^_^
 # 1.6 -- Typo in the "uptime" function
 # 1.5 -- Debugged 'mig-all' function
 # 1.4 -- Debugging Time with JM getting things working more smoothly and looking better
@@ -167,9 +170,158 @@ echo -e ${br}
 done
 ssh -tq ${uname}@${acct}.wpengine.com "rm ${acct}.${epoch}.access.log && exit ; bash" && rm ${acct}.${epoch}.access.log
 }
-
 #---------------------------------------------------------------------------------------------#
 
+# Description: Get the accounts NGINX config file and open it using Nano
+#Usage: l2 nginx-conf <account>
+function nginx-config {
+	scp -q ${uname}@${acct}.wpengine.com:/nas/wp/conf/lb/sites/${acct}.conf ${acct}.${epoch}.conf
+	nano ${acct}.${epoch}.conf
+	rm ${acct}.${epoch}.conf
+}
+#---------------------------------------------------------------------------------------------#
+
+# Description: Login to an Account via SSH (location optional)
+# UsageL l2 login <account> <environment> <location>
+function login {
+	envir
+	if [[ -n ${four} ]]; then
+		echo -e ${br}"Alright, Logging into the ${envir} and going to ${four}\n"
+			ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct}/${four}; bash"
+	else
+		echo -e ${br}"Alright, logging into the ${envir} Server\n"
+			ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct}; bash"
+	fi
+	echo
+}
+#---------------------------------------------------------------------------------------------#
+
+# Description: Find either a File or a String of Text in the account
+# Usage: l2 find <account> <envir> <file/text>
+function find {
+	envir
+	if [[ -n ${four} ]]; then
+		search=${four}
+	elif [[ -z ${four} ]]; then
+		echo -e ${br}
+		read -p "What are you looking for? " search
+		echo
+	fi
+	read -p "Is this a File or a String that you are looking for? " which
+	echo -e "\n"${br}
+	if [[ ${which} = f* ]]; then
+		ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct}/ && find . -type f -name '"*${search}*"' ! -path '"./wp-admin/*"' ! -path '"./wp-includes/*"' > /home/${uname}/find.${epoch}.txt && exit ; bash"
+		scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/find.${epoch}.txt find.${epoch}.txt
+		nl find.${epoch}.txt
+	else
+		ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct} && sudo ack-grep --ignore-dir=wp-includes --ignore-dir=wp-admin --nosql "${search}" > /home/${uname}/ack.${epoch}.txt && exit ; bash"
+		scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/ack.${epoch}.txt ack.${epoch}.txt
+		nl ack.${epoch}.txt
+		awk -F':' '{print $1}' ack.${epoch}.txt > find.${epoch}.txt
+		awk -F':' '{print $2}' ack.${epoch}.txt > line.${epoch}.txt
+	fi
+	echo -e ${br}
+	read -p "Which File would you like to Open? Pick a number. " num
+		while [[ ${num} = [0-9]* ]]; do
+			pick=$(sed -n "${num}"p find.${epoch}.txt)
+			if [[ ${which} != f* ]]; then
+				pickline=$(sed -n "${num}"p line.${epoch}.txt)
+				ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct} && sudo nano +${pickline} ${pick} && exit ; bash"
+				echo
+				nl ack.${epoch}.txt
+			else
+				ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct} && sudo nano ${pick} && exit ; bash"
+				echo
+				nl find.${epoch}.txt
+			fi
+		echo -e ${br}
+		read -p "Would you like to open another? Press X to finish " num
+		done
+	ssh -tq ${uname}@${acct}.wpengine.com "rm -f find.${epoch}.txt ack.${epoch}.txt; exit" && rm -f find.${epoch}.txt ack.${epoch}.txt line.${epoch}.txt
+}
+#---------------------------------------------------------------------------------------------#
+
+# Description: Get the files for a Site or Specific Folder from our Duplicity Backup (full backup)
+# Usage: l2 duplicity <account> <date> <file/folder>
+function duplicity {
+	if [[ ${three} = [0-9]* ]]; then
+		date=${three}
+	else
+		# Get the Date to restore from
+		read -p "From what date? YYYMMDD " date
+		echo
+    fi
+    if [[ -n ${four} ]]; then
+    	folder=${four}
+    else
+		# Optionally, get a specific folder
+		read -p "Which Folder or File? (Press enter for the whole site) " folder
+		echo -e "\n"${br}
+	fi
+	# Do the things
+	if [[ -n ${folder} ]]; then
+		ssh -tq ${uname}@${acct}.wpengine.com "cd /var/tmp && sudo duplicity_restore_v2 -s ${acct} -d ${date} -r ${folder} && sudo mv -f ${acct} /home/${uname}/ && exit ; bash"
+	else
+		ssh -tq ${uname}@${acct}.wpengine.com "cd /var/tmp && sudo duplicity_restore_v2 -s ${acct} -d ${date} -r / && sudo mv -f ${acct} /home/${uname}/ && exit ; bash"
+	fi
+	# You did it! Now what would you like to do with this file?
+	clean=n
+	while [[ ${clean} = n* ]] || [[ ${clean} = N* ]]; do
+	echo -e "\n"${br}
+	read -p "Would you like to Download, Rsync, or Move the results? (press Enter for None of these) " option
+	echo -e ${br}
+		if [[ ${option} = d* ]] || [[ ${option} = D* ]]; then
+			ssh -tq ${uname}@${acct}.wpengine.com "tar -cvf ${acct}-duplicity.${epoch}.tar ${acct} && exit ; bash"
+			scp ${uname}@${acct}.wpengine.com:${acct}-duplicity.${epoch}.tar ${acct}-duplicity.${epoch}.tar 
+		elif [[ ${option} = r* ]] || [[ ${option} = R* ]]; then
+			echo -e "\nSending you in as Root -> Best of luck soldier. (~sad trumpet plays in the background~)\n"
+			ssh -tq ${uname}@bmoore.wpengine.com "sudo ssh root@${acct}.wpengine.com && exit ; bash"
+		elif [[ ${option} = m* ]] || [[ ${option} = M* ]]; then
+			read -p "Tar it or as is? " method
+				if [[ ${method} = t* ]]; then
+					ssh -tq ${uname}@${acct}.wpengine.com "tar -cvf ${acct}-duplicity.${epoch}.tar ${acct} && sudo mv ${acct}-duplicity.${epoch}.tar /nas/wp/www/sites/${acct}/_wpeprivate/ && exit ; bash"
+				else
+					ssh -tq ${uname}@${acct}.wpengine.com "sudo mv -f ${acct} /nas/wp/www/sites/${acct}/_wpeprivate/ && exit ; bash"
+				fi
+		elif [[ -z ${option} ]]; then
+			echo "\nAlright, dropping you in the folder, have fun.\n"
+			ssh -tq ${uname}@${acct}.wpengine.com
+		fi
+	echo -e ${br}
+	read -p "All Done? Clean up? Yes or No " clean
+	echo
+	done
+	sleep .5
+	ssh -tq ${uname}@${acct}.wpengine.com "sudo rm -rf ${acct} && if [[ -f ${acct}-duplicity.${epoch}.tar ]]; then rm -f ${acct}-duplicity.${epoch}.tar; fi && exit; bash"
+}
+#---------------------------------------------------------------------------------------------#
+
+#################### Determine Environment ####################
+function envir {
+if [[ -n ${three} ]]; then
+	if [[ ${three} = p* ]]; then
+		envir=sites
+	elif [[ ${three} = s* ]]; then
+		envir=staging
+	else
+		read -p "Is this the Production or the Staging Server? " env
+		echo
+		if [[ ${env} = p* ]]; then
+			envir=sites
+		elif [[ ${env} = s* ]]; then
+			envir=staging
+		fi
+	fi
+elif [[ -z ${three} ]]; then
+	read -p "Is this the Production or the Staging Server? " env
+	echo
+		if [[ ${env} = p* ]]; then
+			envir=sites
+		elif [[ ${env} = s* ]]; then
+			envir=staging
+		fi
+fi
+}
 #################### USER NAME ####################
 
 function setuname {
@@ -194,41 +346,25 @@ fi
 
 function menu {
 while [[ -z ${opt} ]]; do
-	account
 	echo -e "${br}Available tasks:\n"
-	echo -e "1: www-codes => Description: Grab occurrences of a certain HTTP code in an account's logs."
-	echo -e "2: tfile => Description: Used to touch a file that is 404'ing in an account repeatedly."
-	echo -e "3: mig-all => Description: Output lines to migrate every account associated with another account, including parent and children."
-	echo -e "4: ng-logs => Description: Show log hits from nginx that took the longest time to complete."
-	echo -e "5: sql-slow => Description: Show problematic sql information."
-	echo -e "6: sql-heavy-rows => Description: Show which tables have over 5000 rows for an account."
-	echo -e "7: hiload => Description: Show load that was 1.5x the number of processer cores."
-	echo -e "8: wp-plugins => Description: Show enabled plugins for an account."
-	echo -e "9: uptime => Description: Shows how many min/hr had log hits. Ideally 60 for busy site meaning at least one hit per minute happened, and, thus, no downtime."
+	echo -e "www-codes => Description: Grab occurrences of a certain HTTP code in an account's logs."
+	echo -e "tfile => Description: Used to touch a file that is 404'ing in an account repeatedly."
+	echo -e "mig-all => Description: Output lines to migrate every account associated with another account, including parent and children."
+	echo -e "ng-logs => Description: Show log hits from nginx that took the longest time to complete."
+	echo -e "sql-slow => Description: Show problematic sql information."
+	echo -e "sql-heavy-rows => Description: Show which tables have over 5000 rows for an account."
+	echo -e "hiload => Description: Show load that was 1.5x the number of processer cores."
+	echo -e "wp-plugins => Description: Show enabled plugins for an account."
+	echo -e "uptime => Description: Shows how many min/hr had log hits. Ideally 60 for busy site meaning at least one hit per minute happened, and, thus, no downtime."
+	echo -e "nginx-confg =>  Description: Get the accounts NGINX config file and open it using Nano"
+	echo -e "login =>  Description: Login to an Account via SSH (location optional)"
+	echo -e "find => Description: Find either a File or a String of Text in the account"
+	echo -e "duplicity => Description: Get the files for a Site or Specific Folder from our Duplicity Backup (full backup)"
 	echo -e ${br}
-	read -p "Type function name or number that you wish to use: " opt
-if [[ ${opt} = 1 ]] || [[ ${opt} = www-codes ]]; then
-	www-codes
-elif [[ ${opt} = 2 ]] || [[ ${opt} = tfile ]]; then
-	tfile
-elif [[ ${opt} = 3 ]] || [[ ${opt} = mig-all ]]; then
-	mig-all
-elif [[ ${opt} = 4 ]] || [[ ${opt} = ng-logs ]]; then
-	ng-logs
-elif [[ ${opt} = 5 ]] || [[ ${opt} = sql-slow ]]; then
-	sql-slow
-elif [[ ${opt} = 6 ]] || [[ ${opt} = sql-heavy-rows ]]; then
-	sql-heavy-rows
-elif [[ ${opt} = 7 ]] || [[ ${opt} = hiload ]]; then
-	hiload
-elif [[ ${opt} = 8 ]] || [[ ${opt} = wp-plugins ]]; then
-	wp-plugins
-elif [[ ${opt} = 9 ]] || [[ ${opt} = uptime ]]; then
-	uptime
-else
-	echo -e "${opt}\nYou Didn't do it right! Try again.\n"
-	opt=
-fi
+	read -p "Type function name that you wish to use: " opt
+	echo
+account
+declare -F ${opt} &>/dev/null && echo && ${opt} && echo && exit 0 || echo -e "${opt}\nYou Didn't do it right! Try again.\n"; opt=""
 done
 }
 
@@ -237,31 +373,17 @@ done
 acct=${2}
 three=${3}
 four=${4}
+five=${5}
 br="++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n"
 epoch=$(date +%s)
 if [[ -z ${uname} ]]; then
 	setuname
 else
-	echo -e "Your current username is set to: \033[1;31m"${uname}"\033[1;000m\n"
-	if [[ ${1} = www-codes ]]; then
-		account && www-codes
-	elif [[ ${1} = tfile ]]; then
-		account && tfile
-	elif [[ ${1} = mig-all ]]; then
-		account && mig-all
-	elif [[ ${1} = ng-logs ]]; then
-		account && ng-logs
-	elif [[ ${1} = sql-slow ]]; then
-		account && sql-slow
-	elif [[ ${1} = sql-heavy-rows ]]; then
-		account && sql-heavy-rows
-	elif [[ ${1} = hiload ]]; then
-		account && hiload
-	elif [[ ${1} = wp-plugins ]]; then
-		account && wp-plugins
-	elif [[ ${1} = uptime ]]; then
-		account && uptime
-	elif [[ ${1} = uname ]]; then
+	if [[ -n ${1} ]]; then
+	echo -e "\nYour current username is set to: \033[1;31m"${uname}"\033[1;000m"
+	account
+	declare -F ${1} &>/dev/null && echo && ${1} && echo && exit 0 || opt=""
+elif [[ ${1} = uname ]]; then
 		setuname
 	else
 		echo -e "\nUsage is: l2 <function> <account> <optional argument>\n"
