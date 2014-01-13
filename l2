@@ -1,7 +1,8 @@
 #!/bin/bash
 
 #Author: BMO and JM
-#Version: 2.0
+#Version: 2.1
+# 2.1 -- Cleaner commands and results with the "Find" function
 # 2.0 -- New "Run It" and "Menu" system
 # 2.0 -- Merged the "wp" script into the "l2" script. Lots of new functions to play with
 # 2.0 -- Skipped a release for this one ^_^
@@ -9,8 +10,6 @@
 # 1.5 -- Debugged 'mig-all' function
 # 1.4 -- Debugging Time with JM getting things working more smoothly and looking better
 # 1.3 -- Added the "utime" Function
-# 1.2 -- Better Mac and "sed" compatibilty
-# 1.2 -- Removed the need for sudo with local commands
 
 
 #################### FUNCTIONS ####################
@@ -197,7 +196,7 @@ function login {
 #---------------------------------------------------------------------------------------------#
 
 # Description: Find either a File or a String of Text in the account
-# Usage: l2 find <account> <envir> <file/text>
+# Usage: l2 find <account> <envir> "<file/text>"
 function find {
 	envir
 	if [[ -n ${four} ]]; then
@@ -207,14 +206,15 @@ function find {
 		read -p "What are you looking for? " search
 		echo
 	fi
-	read -p "Is this a File or a String that you are looking for? " which
 	echo -e "\n"${br}
+	read -p "Is this a File or a String that you are looking for? " which
 	if [[ ${which} = f* ]]; then
-		ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct}/ && find . -type f -name '"*${search}*"' ! -path '"./wp-admin/*"' ! -path '"./wp-includes/*"' > /home/${uname}/find.${epoch}.txt && exit ; bash"
+		ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct}/ && find . -type f -iname \"${search}\" ! -path \"./wp-admin/*\" ! -path \"./wp-includes/*\" > /home/${uname}/find.${epoch}.txt && exit ; bash"
 		scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/find.${epoch}.txt find.${epoch}.txt
 		nl find.${epoch}.txt
 	else
-		ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct} && sudo ack-grep --ignore-dir=wp-includes --ignore-dir=wp-admin --nosql "${search}" > /home/${uname}/ack.${epoch}.txt && exit ; bash"
+		#ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct} && sudo ack-grep --ignore-dir=wp-includes --ignore-dir=wp-admin --nosql \"${search}\" > /home/${uname}/ack.${epoch}.txt && exit ; bash"
+		ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct} && sudo grep -ir --exclude=*.sql --exclude-dir=wp-includes --exclude-dir=wp-admin -e \"${search}\" * > /home/${uname}/ack.${epoch}.txt; exit"
 		scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/ack.${epoch}.txt ack.${epoch}.txt
 		nl ack.${epoch}.txt
 		awk -F':' '{print $1}' ack.${epoch}.txt > find.${epoch}.txt
