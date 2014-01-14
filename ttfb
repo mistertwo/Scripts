@@ -1,20 +1,29 @@
 #!/bin/bash
 
+# WPEngine Time To First Byte Script
+# By Jonathan Morgan
+# Modified by Ben Moore
+# For WPEngine Employees
+
+#version .5b - initial release/beta
+#version .6 - stripped out "http://" from curl line.
+
+
 function ttfb {
-if [[ -n $domain ]]; then
-	echo -e "\n\nDescription: Test time to first byte from the CLI."
+if [[ -n ${domain} ]]; then
+	echo -e "\n\nTTFB measured 10 times with 1s intervals:"
 	br="++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 	counter=0; 
-	echo -e $br "\n $domain Time To First Byte measured 10 times at 1 second intervals:\n"
+	echo -e ${br}"\n Testing: ${domain}\n"
 		for counter in {1..10}; do 
-		echo $counter - $(curl -o /dev/null -w "Connect: %{time_connect} TTFB: %{time_starttransfer} Total time: %{time_total} \n" --silent --output /dev/null http://$domain);
+		echo ${counter} - $(curl -o /dev/null -w "Connect: %{time_connect} TTFB: %{time_starttransfer} Total time: %{time_total} \n" --silent --output /dev/null ${domain});
 		sleep 1
 		done
-	echo $br;
+	echo ${br};
 else
 	echo -e "\nUsage: ttfb <domain_name>.\n\n"
 	return 0
 fi
 }
-domain=$1
+domain=${1}
 ttfb
