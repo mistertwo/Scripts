@@ -1,8 +1,7 @@
 #!/bin/bash
 
 #Author: BMO and JM
-#Version: 2.2
-# 2.2 -- Fixed the output of the "mig-all" function
+#Version: 2.1
 # 2.1 -- Cleaner commands and results with the "Find" function
 # 2.0 -- New "Run It" and "Menu" system
 # 2.0 -- Merged the "wp" script into the "l2" script. Lots of new functions to play with
@@ -62,12 +61,12 @@ else
 fi
 ssh -tq ${uname}@${acct}.wpengine.com "sudo /nas/wp/ec2/cluster parent-child ${acct} > /home/${uname}/result.${epoch}.txt && hostname | cut -d- -f2 > /home/${uname}/host.${epoch}.txt && exit ; bash"
 scp -q ${uname}@${acct}.wpengine.com:/home/${uname}/result.${epoch}.txt result.${epoch}.txt && scp -q ${uname}@${acct}.wpengine.com:/home/${uname}/host.${epoch}.txt host.${epoch}.txt
-curpod=$(cat host.${epoch}.txt)
+cur-pod=$(cat host.${epoch}.txt)
 echo -e "\nDescription: Output lines to migrate every account associated with another account, including parent and children."
 echo -e ${br}
 echo -e $(cat result.${epoch}.txt | sed 's/ /\\n/g') | 
 while read
-do echo -e "sudo /nas/wp/ec2/cluster move-to-preferred-cluster ${curpod} ${REPLY} ${destpod}"
+do echo -e "sudo /nas/wp/ec2/cluster move-to-preferred-cluster ${cur-pod} ${REPLY} ${destpod}"
 done
 echo -e "\n${br}"
 ssh -tq ${uname}@${acct}.wpengine.com "rm result.${epoch}.txt host.${epoch}.txt && exit ; bash" && rm result.${epoch}.txt host.${epoch}.txt
@@ -106,8 +105,7 @@ echo -e ${br}
 #sql-heavy-rows - show which tables have over 5000 rows for an account.
 #Usage l2 sql-heavey-rows <account>
 function sql-heavy-rows {
-echo -e "\n"${br}"Account: "${acct}"\nDatabase: wp_"${acct}"\n"${br}
-ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/sites/${acct} && sudo mysql wp_${acct} -e 'show table status where rows > 5000;'| awk '{print \$1,\$5 }'| sort -nk2| column -t && exit ; bash"
+ssh -tq ${uname}@${acct}.wpengine.com "sudo -v; echo -e \"\n${br}Account: ${acct}\nDatabase: wp_${acct}\n${br}\"; cd /nas/wp/www/sites/${acct} && sudo mysql wp_${acct} -e 'show table status where rows > 5000;'| awk '{print \$1,\$5 }'| sort -nk2| column -t && exit ; bash"
 echo -e ${br}
 }
 #---------------------------------------------------------------------------------------------#
@@ -210,12 +208,12 @@ function find {
 	echo -e "\n"${br}
 	read -p "Is this a File or a String that you are looking for? " which
 	if [[ ${which} = f* ]]; then
-		ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct}/ && find . -type f -iname \"*${search}*\" ! -path \"./wp-admin/*\" ! -path \"./wp-includes/*\" > /home/${uname}/find.${epoch}.txt && exit ; bash"
+		ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct}/ && find . -type f -iname \"${search}\" ! -path \"./wp-admin/*\" ! -path \"./wp-includes/*\" > /home/${uname}/find.${epoch}.txt && exit ; bash"
 		scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/find.${epoch}.txt find.${epoch}.txt
 		nl find.${epoch}.txt
 	else
 		#ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct} && sudo ack-grep --ignore-dir=wp-includes --ignore-dir=wp-admin --nosql \"${search}\" > /home/${uname}/ack.${epoch}.txt && exit ; bash"
-		ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct} && sudo grep -irn --exclude=*.sql --exclude-dir=wp-includes --exclude-dir=wp-admin -e \"*${search}*\" * > /home/${uname}/ack.${epoch}.txt; exit"
+		ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct} && sudo grep -irn --exclude=*.sql --exclude-dir=wp-includes --exclude-dir=wp-admin -e \"${search}\" * > /home/${uname}/ack.${epoch}.txt; exit"
 		scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/ack.${epoch}.txt ack.${epoch}.txt
 		nl ack.${epoch}.txt
 		awk -F':' '{print $1}' ack.${epoch}.txt > find.${epoch}.txt
