@@ -295,6 +295,52 @@ function duplicity {
 }
 #---------------------------------------------------------------------------------------------#
 
+# Description: Count which Apache log had the most hits in a time range.
+# Usage: l2 slog <account> <hour>
+function slog {
+ year=$(date +%Y)
+ hour="${year}:${three}:[0-9]+"
+ echo -e "\n${br}\nApache log counts:\n"
+ ssh -tq ${uname}@${acct}.wpengine.com "while read log
+ do sudo -v
+ count=\$(sudo grep -E \"${hour}\" \${log}| wc -l)
+ echo \${count} - \${log}| grep -v ^0
+ done < <(sudo find /var/log/apache2/ -maxdepth 1 -type f ! -name \*staging\* ! -name \*gz ! -name \*1) | sort -nk1 | tail
+ exit"
+ echo -e ${br}
+ read -p "Which Account's log would you like to check? X to quit - " logchk
+ if [[ ${logchk} = [Xx] ]]; then
+ 	exit
+ else
+ 	slogchk
+ fi
+ }
+#---------------------------------------------------------------------------------------------#
+
+#Description: Show heaviest requests and IP's in log after running slog.\n Usage: RUN SLOG FIRST; slogchk <heavy_log_file>\n\n"
+# Usage l2 slogchk <account> <hour>
+function slogchk {
+year=$(date +%Y)
+if [[ -z ${hour} ]]; then 
+	hour="${year}:${three}:[0-9]+"
+fi
+if [[ -z $logchk ]]; then
+	logchk=${acct}
+fi
+hlog="/var/log/apache2/${logchk}.access.log"
+ssh -tq ${uname}@${acct}.wpengine.com "echo -e \"\n\n\"${br}\"\nMost frequent requests: \n\"
+sudo grep -E \"${hour}\" ${hlog} | while read line
+do sudo awk '{print \$1,\$4\"]\",\$5,\$6,\$7,\$8}'
+done | sudo grep -oP '(?<=\\\").*(?=\\\")' | sort | uniq -c | sort -nk1 | tail -3
+echo -e ${br}\"\nMost frequent IP's: \n\"
+sudo grep -E \"${hour}\" ${hlog} | while read line
+do sudo awk '{print \$1}' | sort | uniq -c | sort -nk1 | tail -3
+done
+exit"
+echo -e ${br}
+}
+#---------------------------------------------------------------------------------------------#
+
 #################### Determine Environment ####################
 function envir {
 if [[ -n ${three} ]]; then
