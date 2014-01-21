@@ -85,27 +85,37 @@ echo -e "\n${br}Slow requests that received 200 OK HTTP Status Code.\n"
 awk '/\|200\|/' ${acct}.${epoch}.nginx| sort -t\| -rnk8| head
 echo -e "${br}"
 ssh -tq ${uname}@${acct}.wpengine.com "rm ${acct}.${epoch}.nginx && exit ; bash" && rm ${acct}.${epoch}.nginx
+read -p "Check for slow SQL information? Y or N - " answer
+if [[ ${answer} = [yY]* ]]; then
+	sql-slow
+fi
 }
 #---------------------------------------------------------------------------------------------#
 
-#sql-slow - show problematic sql infos.
+#sql-slow - Description: Display problematic MySQL information. (DO NOT PASTE THIS COMPLETE OUTPUT TO A CUSTOMER)
 #usage l2 sql-slow <account>
 function sql-slow { 
 echo -e "\nDescription: Display problematic MySQL information. (DO NOT PASTE THIS COMPLETE OUTPUT TO A CUSTOMER)\n"
-echo -e "\n"${br}"Show MySQL users that hit the slow query log the most.\n"
-ssh -tq ${uname}@${acct}.wpengine.com "sudo awk '/User@Host/ {print $3}' /var/log/mysql/mysql-slow.log| cut -d\[ -f1| sort| uniq -c| sort -nk1| tail -10 && exit ; bash"
-echo -e ${br}"Count of which PHP lines that created slow queries: \n"
-ssh -tq ${uname}@${acct}.wpengine.com "sudo grep -oP '(?<=\[\/nas\/wp\/www\/cluster\-).*(?=\])' /var/log/mysql/mysql-slow.log| sort| uniq -c| sort -nk1| tail -10 && exit ; bash"
-echo -e ${br}"Heavy SQL Tables based on table size vs. table rows: \n"
-ssh -tq ${uname}@${acct}.wpengine.com "sudo mysql -e \"select concat(table_schema, '.', table_name), concat(round(table_rows / 1000000, 2), 'M') rows, concat(round(data_length / ( 1024 * 1024 * 1024 ), 2), 'G') DATA, concat(round(index_length / ( 1024 * 1024 * 1024 ), 2), 'G') idx, concat(round(( data_length + index_length ) / ( 1024 * 1024 * 1024 ), 2), 'G') total_size, round(index_length / data_length, 2) idxfrac from information_schema.TABLES ORDER by data_length + index_length DESC limit 10;\" && exit ; bash"
-echo -e ${br}
+ssh -tq ${uname}@${acct}.wpengine.com "sudo -v
+echo -e \"\\n\"${sshbr}\"Show MySQL users that hit the slow query log the most.\\n\"
+sudo awk '/User@Host/ {print \$3}' /var/log/mysql/mysql-slow.log| cut -d\[ -f1| sort| uniq -c| sort -nk1| tail -10
+echo -e ${sshbr}\"Count of which PHP lines that created slow queries: \\n\"
+sudo grep -oP '(?<=\[\/nas\/wp\/www\/cluster\-).*(?=\])' /var/log/mysql/mysql-slow.log| sort| uniq -c| sort -nk1| tail -10
+echo -e ${sshbr}\"Heavy SQL Tables based on table size vs. table rows: \\n\"
+sudo mysql -e \"select concat(table_schema, '.', table_name), concat(round(table_rows / 1000000, 2), 'M') rows, concat(round(data_length / ( 1024 * 1024 * 1024 ), 2), 'G') DATA, concat(round(index_length / ( 1024 * 1024 * 1024 ), 2), 'G') idx, concat(round(( data_length + index_length ) / ( 1024 * 1024 * 1024 ), 2), 'G') total_size, round(index_length / data_length, 2) idxfrac from information_schema.TABLES ORDER by data_length + index_length DESC limit 10;\"
+echo -e ${sshbr}
+exit"
+sql-heavy-rows
 }
 #---------------------------------------------------------------------------------------------#
 
 #sql-heavy-rows - show which tables have over 5000 rows for an account.
 #Usage l2 sql-heavey-rows <account>
 function sql-heavy-rows {
-ssh -tq ${uname}@${acct}.wpengine.com "sudo -v; echo -e \"\n${br}Account: ${acct}\nDatabase: wp_${acct}\n${br}\"; cd /nas/wp/www/sites/${acct} && sudo mysql wp_${acct} -e 'show table status where rows > 5000;'| awk '{print \$1,\$5 }'| sort -nk2| column -t && exit ; bash"
+ssh -tq ${uname}@${acct}.wpengine.com "sudo -v
+echo -e \"\\nTables which have over 5000 rows.\\n${sshbr}Account: ${acct}\nDatabase: wp_${acct}\\n${sshbr}\"
+cd /nas/wp/www/sites/${acct} && sudo mysql wp_${acct} -e 'show table status where rows > 5000;'| awk '{print \$1,\$5 }'| sort -nk2| column -t
+exit"
 echo -e ${br}
 }
 #---------------------------------------------------------------------------------------------#
@@ -208,35 +218,35 @@ function find {
 	echo -e "\n"${br}
 	read -p "Is this a File or a String that you are looking for? " which
 	if [[ ${which} = f* ]]; then
-		ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct}/ && find . -type f -iname \"${search}\" ! -path \"./wp-admin/*\" ! -path \"./wp-includes/*\" > /home/${uname}/find.${epoch}.txt && exit ; bash"
-		scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/find.${epoch}.txt find.${epoch}.txt
-		nl find.${epoch}.txt
+		ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct}/ && find . -type f -iname \"*${search}*\" ! -path \"./wp-admin/*\" ! -path \"./wp-includes/*\" > /home/${uname}/find.${epoch} && exit ; bash"
+		scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/find.${epoch} find.${epoch}
+		nl find.${epoch}
 	else
 		#ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct} && sudo ack-grep --ignore-dir=wp-includes --ignore-dir=wp-admin --nosql \"${search}\" > /home/${uname}/ack.${epoch}.txt && exit ; bash"
-		ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct} && sudo grep -irn --exclude=*.sql --exclude-dir=wp-includes --exclude-dir=wp-admin -e \"${search}\" * > /home/${uname}/ack.${epoch}.txt; exit"
-		scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/ack.${epoch}.txt ack.${epoch}.txt
-		nl ack.${epoch}.txt
-		awk -F':' '{print $1}' ack.${epoch}.txt > find.${epoch}.txt
-		awk -F':' '{print $2}' ack.${epoch}.txt > line.${epoch}.txt
+		ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct} && sudo grep -irn --exclude=*.sql --exclude-dir=wp-includes --exclude-dir=wp-admin -e \"${search}\" * > /home/${uname}/ack.${epoch}; exit"
+		scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/ack.${epoch} ack.${epoch}
+		nl ack.${epoch}
+		awk -F':' '{print $1}' ack.${epoch} > find.${epoch}
+		awk -F':' '{print $2}' ack.${epoch} > line.${epoch}
 	fi
 	echo -e ${br}
 	read -p "Which File would you like to Open? Pick a number. " num
 		while [[ ${num} = [0-9]* ]]; do
-			pick=$(sed -n "${num}"p find.${epoch}.txt)
+			pick=$(sed -n "${num}"p find.${epoch})
 			if [[ ${which} != f* ]]; then
-				pickline=$(sed -n "${num}"p line.${epoch}.txt)
+				pickline=$(sed -n "${num}"p line.${epoch})
 				ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct} && sudo nano +${pickline} ${pick} && exit ; bash"
 				echo
-				nl ack.${epoch}.txt
+				nl ack.${epoch}
 			else
 				ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct} && sudo nano ${pick} && exit ; bash"
 				echo
-				nl find.${epoch}.txt
+				nl find.${epoch}
 			fi
 		echo -e ${br}
 		read -p "Would you like to open another? Press X to finish " num
 		done
-	ssh -tq ${uname}@${acct}.wpengine.com "rm -f find.${epoch}.txt ack.${epoch}.txt; exit" && rm -f find.${epoch}.txt ack.${epoch}.txt line.${epoch}.txt
+	ssh -tq ${uname}@${acct}.wpengine.com "rm -f find.${epoch} ack.${epoch}; exit" && rm -f find.${epoch} ack.${epoch} line.${epoch}
 }
 #---------------------------------------------------------------------------------------------#
 
@@ -419,6 +429,7 @@ acct=${2}
 three=${3}
 four=${4}
 br="++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n"
+sshbr="++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\\\n"
 epoch=$(date +%s)
 if [[ -z ${uname} ]]; then
 	setuname
