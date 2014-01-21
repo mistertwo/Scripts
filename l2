@@ -222,8 +222,7 @@ function find {
 		scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/find.${epoch} find.${epoch}
 		nl find.${epoch}
 	else
-		#ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct} && sudo ack-grep --ignore-dir=wp-includes --ignore-dir=wp-admin --nosql \"${search}\" > /home/${uname}/ack.${epoch}.txt && exit ; bash"
-		ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct} && sudo grep -irn --exclude=*.sql --exclude-dir=wp-includes --exclude-dir=wp-admin -e \"${search}\" * > /home/${uname}/ack.${epoch}; exit"
+		ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct} && sudo grep -irn --exclude=*.{sql,png,pdf,csv,jpeg,jpg,gif,zip,tar,tar.gz} --exclude-dir=wp-includes --exclude-dir=wp-admin -e \"${search}\" * > /home/${uname}/ack.${epoch}; exit"
 		scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/ack.${epoch} ack.${epoch}
 		nl ack.${epoch}
 		awk -F':' '{print $1}' ack.${epoch} > find.${epoch}
