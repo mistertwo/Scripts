@@ -1,7 +1,7 @@
 #!/bin/bash
-
 #Author: BMO and JM
-#Version: 2.2
+#Version: 2.3
+# 2.3 -- Narrowed Down the slog and slogchk functions to 15 min segments, aka: 1/4 hours.
 # 2.2 -- slog and slogchk functions have been added
 # 2.2 -- A few functions have been stringed together
 # 2.2 -- Still working on the "Find" function
@@ -308,14 +308,28 @@ function duplicity {
 #---------------------------------------------------------------------------------------------#
 
 # Description: Count which Apache log had the most hits in a time range.
-# Usage: l2 slog <account> <hour>
+# Usage: l2 slog <account> <HH:MM>
+# Example l2 slog wpengine 14:25
 function slog {
- year=$(date +%Y)
- hour="${year}:${three}:[0-9]+"
- echo -e "\n${br}\nApache log counts:\n"
- ssh -tq ${uname}@${acct}.wpengine.com "while read log
- do sudo -v
- count=\$(sudo grep -E \"${hour}\" \${log}| wc -l)
+	if [[ -z ${three} ]]; then
+		read -p "What Time (UTC) would you like to Check? HH:MM" three
+	fi
+year=$(date +%Y)
+hour=$(echo ${three} | awk -F':' '{print $1}')
+min=$(echo ${three} | awk -F':' '{print $2}')
+if (( ${min} <= 15 )); then
+ 	hhmm="${year}:${hour}:(0[0-9]|1[0-5])"
+ elif (( ${min} > 15 )) && (( ${min} <= 30 )); then
+ 	hhmm="${year}:${hour}:(1[6-9]|2[0-9]|30)"
+ elif (( ${min} > 30 )) && (( ${min} <= 45 )); then
+ 	hhmm="${year}:${hour}:(3[1-9]|4[0-5])"
+ elif (( ${min} > 45 )) && (( ${min} <= 59 )); then
+ 	hhmm="${year}:${hour}:(4[6-9]|5[0-9])"
+ fi
+  echo -e "\n${br}\nApache log counts for ${hhmm}:\n"
+ ssh -tq ${uname}@${acct}.wpengine.com "sudo -v
+ while read log
+ do count=\$(sudo grep -E \"${hhmm}\" \${log}| wc -l)
  echo \${count} - \${log}| grep -v ^0
  done < <(sudo find /var/log/apache2/ -maxdepth 1 -type f ! -name \*staging\* ! -name \*gz ! -name \*1) | sort -nk1 | tail
  exit"
@@ -330,27 +344,48 @@ function slog {
 #---------------------------------------------------------------------------------------------#
 
 # Description: Show heaviest requests and IP's in log after running slog.
-# Usage l2 slogchk <account> <hour>
+# Usage: l2 slogchk <account> <HH:MM>
+# Example l2 slogchk wpengine 14:25
 function slogchk {
 year=$(date +%Y)
-if [[ -z ${hour} ]]; then 
-	hour="${year}:${three}:[0-9]+"
-fi
+	if [[ -z ${three} ]] && [[ -z ${hhmm} ]]; then
+		read -p "What Time (UTC) would you like to Check? HH:MM - " three
+	fi
+year=$(date +%Y)
+hour=$(echo ${three} | awk -F':' '{print $1}')
+min=$(echo ${three} | awk -F':' '{print $2}')
+if (( ${min} <= 15 )); then
+ 	hhmm="${year}:${hour}:(0[0-9]|1[0-5])"
+ elif (( ${min} > 15 )) && (( ${min} <= 30 )); then
+ 	hhmm="${year}:${hour}:(1[6-9]|2[0-9]|30)"
+ elif (( ${min} > 30 )) && (( ${min} <= 45 )); then
+ 	hhmm="${year}:${hour}:(3[1-9]|4[0-5])"
+ elif (( ${min} > 45 )) && (( ${min} <= 59 )); then
+ 	hhmm="${year}:${hour}:(4[6-9]|5[0-9])"
+ fi
 if [[ -z $logchk ]]; then
 	logchk=${acct}
 fi
 hlog="/var/log/apache2/${logchk}.access.log"
 ssh -tq ${uname}@${acct}.wpengine.com "echo -e \"\n\n\"${br}\"\nMost frequent requests: \n\"
-sudo grep -E \"${hour}\" ${hlog} | while read line
+sudo grep -E \"${hhmm}\" ${hlog} | while read line
 do sudo awk '{print \$1,\$4\"]\",\$5,\$6,\$7,\$8}'
 done | sudo grep -oP '(?<=\\\").*(?=\\\")' | sort | uniq -c | sort -nk1 | tail -3
 echo -e ${br}\"\nMost frequent IP's: \n\"
-sudo grep -E \"${hour}\" ${hlog} | while read line
+sudo grep -E \"${hhmm}\" ${hlog} | while read line
 do sudo awk '{print \$1}' | sort | uniq -c | sort -nk1 | tail -3
 done
 exit"
 echo -e ${br}
 }
+#---------------------------------------------------------------------------------------------#
+
+# Description: Less the Accounts NGINX config file.
+# Usage l2 config <account>
+function config {
+	echo -e "Alright, let's look at the Config File!\n"
+		ssh -tq ${uname}@${acct}.wpengine.com "less /nas/wp/conf/lb/sites/${acct}.conf; exit"
+	}
 #---------------------------------------------------------------------------------------------#
 
 #################### Determine Environment ####################
@@ -418,7 +453,8 @@ while [[ -z ${opt} ]]; do
 	echo -e "find => Description: Find either a File or a String of Text in the account"
 	echo -e "duplicity => Description: Get the files for a Site or Specific Folder from our Duplicity Backup (full backup)"
 	echo -e "slog => Description: Count which Apache log had the most hits in a time range."
-	echo -e "slogchk => Description: Show heaviest requests and IP's in log after running \"slog\""
+	echo -e "slogchk => Description: Show heaviest requests and IP's in log after running \"slog\"."
+	echo -e "config => Description: Less the Accounts NGINX config file."
 	echo -e ${br}
 	read -p "Type function name that you wish to use: " opt
 	echo
