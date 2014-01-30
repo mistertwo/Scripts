@@ -1,6 +1,7 @@
-#!/bin/bash
+#!/bin/bash -x
 #Author: BMO and JM
-#Version: 2.3
+#Version: 2.4
+# 2.4 -- Better Account function to detect Pods
 # 2.3 -- Narrowed Down the slog and slogchk functions to 15 min segments, aka: 1/4 hours.
 # 2.2 -- slog and slogchk functions have been added
 # 2.2 -- A few functions have been stringed together
@@ -9,10 +10,6 @@
 # 2.0 -- New "Run It" and "Menu" system
 # 2.0 -- Merged the "wp" script into the "l2" script. Lots of new functions to play with
 # 2.0 -- Skipped a release for this one ^_^
-# 1.6 -- Typo in the "uptime" function
-# 1.5 -- Debugged 'mig-all' function
-# 1.4 -- Debugging Time with JM getting things working more smoothly and looking better
-# 1.3 -- Added the "utime" Function
 
 
 #################### FUNCTIONS ####################
@@ -195,13 +192,23 @@ function nginx-config {
 # Description: Login to an Account via SSH (location optional)
 # UsageL l2 login <account> <environment> <location>
 function login {
-	envir
-	if [[ -n ${four} ]]; then
+	if [[ -n ${pod} ]]; then
+		if [[ -n ${four} ]]; then
+		echo -e ${br}"Alright, Logging into ${pod} and going to ${four}.\n"
+			ssh -tq ${uname}@${pod}.wpengine.com "cd ${four}; bash"
+		else
+		echo -e ${br}"Alright, logging into ${pod}.\n"
+			ssh -tq ${uname}@${pod}.wpengine.com
+		fi
+	else
+		envir
+		if [[ -n ${four} ]]; then
 		echo -e ${br}"Alright, Logging into the ${envir} and going to ${four}\n"
 			ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct}/${four}; bash"
-	else
+		else
 		echo -e ${br}"Alright, logging into the ${envir} Server\n"
 			ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct}; bash"
+		fi
 	fi
 	echo
 }
@@ -431,6 +438,16 @@ uname=
 function account {
 if [[ -z ${acct} ]]; then
 	read -p "What Account are we working with? " acct
+	pod
+fi
+}
+
+#################### Declare Pod ####################
+function pod {
+if [[ ${acct} = [0-9]* ]]; then
+	pod="pod-${acct}"
+elif [[ ${acct} = [pod-0-9]* ]]; then
+	pod=${acct}
 fi
 }
 
@@ -477,6 +494,7 @@ else
 	if [[ -n ${1} ]]; then
 		echo -e "\nYour current username is set to: \033[1;31m"${uname}"\033[1;000m"
 		account
+		pod
 		declare -F ${1} &>/dev/null && echo && ${1} && echo && exit 0 || 
 		echo -e "\nUsage is: l2 <function> <account> <optional argument>\n"
 		acct=
