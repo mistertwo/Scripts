@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 #Author: BMO and JM
 #Version: 2.4
 # 2.4 -- Better Account function to detect Pods
