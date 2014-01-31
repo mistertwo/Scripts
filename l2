@@ -1,7 +1,10 @@
 #!/bin/bash
 #Author: BMO and JM
-#Version: 2.4
-# 2.4 -- Better Account function to detect Pods
+#Version: 2.5
+# 2.5 -- Stringed Hiload, Slog, and Slogchk together better - 1/31/14
+# 2.5 -- Switched from 3 results to 5 in "slogchck" - 1/31/14
+# 2.5 -- Added the Pod function through the script - 1/31/14
+# 2.4 -- Better Account function to detect Pods - 1/30/14
 # 2.3 -- Narrowed Down the slog and slogchk functions to 15 min segments, aka: 1/4 hours.
 # 2.2 -- slog and slogchk functions have been added
 # 2.2 -- A few functions have been stringed together
@@ -94,7 +97,11 @@ fi
 
 #sql-slow - Description: Display problematic MySQL information. (DO NOT PASTE THIS COMPLETE OUTPUT TO A CUSTOMER)
 #usage l2 sql-slow <account>
-function sql-slow { 
+function sql-slow {
+pod
+if [[ -n ${pod} ]]; then
+	acct=${pod}
+fi 
 echo -e "\nDescription: Display problematic MySQL information. (DO NOT PASTE THIS COMPLETE OUTPUT TO A CUSTOMER)\n"
 ssh -tq ${uname}@${acct}.wpengine.com "sudo -v
 echo -e \"\\n\"${sshbr}\"Show MySQL users that hit the slow query log the most.\\n\"
@@ -105,7 +112,9 @@ echo -e ${sshbr}\"Heavy SQL Tables based on table size vs. table rows: \\n\"
 sudo mysql -e \"select concat(table_schema, '.', table_name), concat(round(table_rows / 1000000, 2), 'M') rows, concat(round(data_length / ( 1024 * 1024 * 1024 ), 2), 'G') DATA, concat(round(index_length / ( 1024 * 1024 * 1024 ), 2), 'G') idx, concat(round(( data_length + index_length ) / ( 1024 * 1024 * 1024 ), 2), 'G') total_size, round(index_length / data_length, 2) idxfrac from information_schema.TABLES ORDER by data_length + index_length DESC limit 10;\"
 echo -e ${sshbr}
 exit"
+if [[ ${acct} != pod-[0-9]* ]]; then
 sql-heavy-rows
+fi
 }
 #---------------------------------------------------------------------------------------------#
 
@@ -128,10 +137,20 @@ if [[ -z ${three} ]]; then
 else
 	day=${three}
 fi
-echo -e "\n\nDescription: Show times when load was over 1.5x the number of processor cores for this server."
+pod
+if [[ -n ${pod} ]]; then
+	acct=${pod}
+fi
+echo -e "\n\nDescription: Show UTC times when load was over 1.5x the number of processor cores for this server."
 echo -e ${br}
 ssh -tq ${uname}@${acct}.wpengine.com "if [[ ! -f /var/log/sysstat/sa${day} ]]; then echo -e \"\nInfo for ${day} does not exist, please try again.\"; else sudo sar -q -f /var/log/sysstat/sa${day}| awk -vcpu=$(grep ^processor /proc/cpuinfo| wc -l) '{if (\$5 > (1.5 * cpu)) print}'; fi && exit ; bash"
 echo -e "\n${br}"
+read -p "Run \"slog\" for a certain time? HH:MM or X - " a
+echo
+if [[ ${a} = [0-9][0-9]:[0-9][0-9] ]]; then
+	three=${a}
+	slog
+fi
 }
 #---------------------------------------------------------------------------------------------#
 
@@ -192,6 +211,7 @@ function nginx-config {
 # Description: Login to an Account via SSH (location optional)
 # UsageL l2 login <account> <environment> <location>
 function login {
+	pod
 	if [[ -n ${pod} ]]; then
 		if [[ -n ${four} ]]; then
 		echo -e ${br}"Alright, Logging into ${pod} and going to ${four}.\n"
@@ -319,21 +339,25 @@ function duplicity {
 # Example l2 slog wpengine 14:25
 function slog {
 	if [[ -z ${three} ]]; then
-		read -p "What Time (UTC) would you like to Check? HH:MM" three
+		read -p "What Time (UTC) would you like to Check? HH:MM - " three
 	fi
 year=$(date +%Y)
 hour=$(echo ${three} | awk -F':' '{print $1}')
 min=$(echo ${three} | awk -F':' '{print $2}')
-if (( ${min} <= 15 )); then
- 	hhmm="${year}:${hour}:(0[0-9]|1[0-5])"
- elif (( ${min} > 15 )) && (( ${min} <= 30 )); then
- 	hhmm="${year}:${hour}:(1[6-9]|2[0-9]|30)"
- elif (( ${min} > 30 )) && (( ${min} <= 45 )); then
- 	hhmm="${year}:${hour}:(3[1-9]|4[0-5])"
- elif (( ${min} > 45 )) && (( ${min} <= 59 )); then
- 	hhmm="${year}:${hour}:(4[6-9]|5[0-9])"
+if (( ${min} <= 14 )); then
+ 	hhmm="${year}:${hour}:(0[0-9]|1[0-4])"
+ elif (( ${min} > 14 )) && (( ${min} <= 29 )); then
+ 	hhmm="${year}:${hour}:(1[5-9]|2[0-9])"
+ elif (( ${min} > 29 )) && (( ${min} <= 44 )); then
+ 	hhmm="${year}:${hour}:(3[0-9]|4[0-4])"
+ elif (( ${min} > 44 )) && (( ${min} <= 59 )); then
+ 	hhmm="${year}:${hour}:(4[5-9]|5[0-9])"
  fi
-  echo -e "\n${br}\nApache log counts for ${hhmm}:\n"
+ pod
+ if [[ -n ${pod} ]]; then
+	acct=${pod}
+ fi
+ echo -e "\n${br}\nApache log counts for ${hhmm}:\n"
  ssh -tq ${uname}@${acct}.wpengine.com "sudo -v
  while read log
  do count=\$(sudo grep -E \"${hhmm}\" \${log}| wc -l)
@@ -345,6 +369,7 @@ if (( ${min} <= 15 )); then
  if [[ ${logchk} = [Xx] ]]; then
  	exit
  else
+ 	acct=${logchk}
  	slogchk
  fi
  }
@@ -361,29 +386,33 @@ year=$(date +%Y)
 year=$(date +%Y)
 hour=$(echo ${three} | awk -F':' '{print $1}')
 min=$(echo ${three} | awk -F':' '{print $2}')
-if (( ${min} <= 15 )); then
- 	hhmm="${year}:${hour}:(0[0-9]|1[0-5])"
- elif (( ${min} > 15 )) && (( ${min} <= 30 )); then
- 	hhmm="${year}:${hour}:(1[6-9]|2[0-9]|30)"
- elif (( ${min} > 30 )) && (( ${min} <= 45 )); then
- 	hhmm="${year}:${hour}:(3[1-9]|4[0-5])"
- elif (( ${min} > 45 )) && (( ${min} <= 59 )); then
- 	hhmm="${year}:${hour}:(4[6-9]|5[0-9])"
+if (( ${min} <= 14 )); then
+ 	hhmm="${year}:${hour}:(0[0-9]|1[0-4])"
+ elif (( ${min} > 14 )) && (( ${min} <= 29 )); then
+ 	hhmm="${year}:${hour}:(1[5-9]|2[0-9])"
+ elif (( ${min} > 29 )) && (( ${min} <= 44 )); then
+ 	hhmm="${year}:${hour}:(3[0-9]|4[0-4])"
+ elif (( ${min} > 44 )) && (( ${min} <= 59 )); then
+ 	hhmm="${year}:${hour}:(4[5-9]|5[0-9])"
  fi
-if [[ -z $logchk ]]; then
-	logchk=${acct}
-fi
-hlog="/var/log/apache2/${logchk}.access.log"
-ssh -tq ${uname}@${acct}.wpengine.com "echo -e \"\n\n\"${br}\"\nMost frequent requests: \n\"
-sudo grep -E \"${hhmm}\" ${hlog} | while read line
+hlog="/var/log/apache2/${acct}.access.log"
+ssh -tq ${uname}@${acct}.wpengine.com "sudo -v
+echo -e \"\nAccount - ${acct}\"
+echo -e \"\n\"${br}\"\nMost frequent requests: \n\"
+while read line
 do sudo awk '{print \$1,\$4\"]\",\$5,\$6,\$7,\$8}'
-done | sudo grep -oP '(?<=\\\").*(?=\\\")' | sort | uniq -c | sort -nk1 | tail -3
+done < <(sudo grep -E \"${hhmm}\" ${hlog})| grep -oP '(?<=\\\").*(?=\\\")' | sort | uniq -c | sort -nk1 | tail -5
 echo -e ${br}\"\nMost frequent IP's: \n\"
-sudo grep -E \"${hhmm}\" ${hlog} | while read line
-do sudo awk '{print \$1}' | sort | uniq -c | sort -nk1 | tail -3
-done
+while read line
+do sudo awk '{print \$1}' | sort | uniq -c | sort -nk1 | tail -5
+done < <(sudo grep -E \"${hhmm}\" ${hlog})
 exit"
 echo -e ${br}
+read -p "Check Another Account? \"account name\" or X - " a
+if [[ ${a} = [a-zA-Z][a-zA-Z]* ]]; then
+	acct=${a}
+	slogchk
+fi
 }
 #---------------------------------------------------------------------------------------------#
 
@@ -486,7 +515,6 @@ else
 	if [[ -n ${1} ]]; then
 		echo -e "\nYour current username is set to: \033[1;31m"${uname}"\033[1;000m"
 		account
-		pod
 		declare -F ${1} &>/dev/null && echo && ${1} && echo && exit 0 || 
 		echo -e "\nUsage is: l2 <function> <account> <optional argument>\n"
 		acct=
