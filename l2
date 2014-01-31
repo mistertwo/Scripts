@@ -387,13 +387,6 @@ echo -e ${br}
 }
 #---------------------------------------------------------------------------------------------#
 
-# Description: Less the Accounts NGINX config file.
-# Usage l2 config <account>
-function config {
-	echo -e "Alright, let's look at the Config File!\n"
-		ssh -tq ${uname}@${acct}.wpengine.com "less /nas/wp/conf/lb/sites/${acct}.conf; exit"
-	}
-#---------------------------------------------------------------------------------------------#
 
 #################### Determine Environment ####################
 function envir {
@@ -465,13 +458,12 @@ while [[ -z ${opt} ]]; do
 	echo -e "hiload => Description: Show load that was 1.5x the number of processer cores."
 	echo -e "wp-plugins => Description: Show enabled plugins for an account."
 	echo -e "uptime => Description: Shows how many min/hr had log hits. Ideally 60 for busy site meaning at least one hit per minute happened, and, thus, no downtime."
-	echo -e "nginx-confg =>  Description: Get the accounts NGINX config file and open it using Nano"
+	echo -e "nginx-confg =>  Description: Get the accounts NGINX config file and opens it with Less."
 	echo -e "login =>  Description: Login to an Account via SSH (location optional)"
 	echo -e "find => Description: Find either a File or a String of Text in the account"
 	echo -e "duplicity => Description: Get the files for a Site or Specific Folder from our Duplicity Backup (full backup)"
 	echo -e "slog => Description: Count which Apache log had the most hits in a time range."
 	echo -e "slogchk => Description: Show heaviest requests and IP's in log after running \"slog\"."
-	echo -e "config => Description: Less the Accounts NGINX config file."
 	echo -e ${br}
 	read -p "Type function name that you wish to use: " opt
 	echo
