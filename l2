@@ -1,6 +1,7 @@
 #!/bin/bash
 #Author: BMO and JM
 #Version: 2.5
+# 2.5 -- Started cleaning up the multiple SSH connections - 1/31/14
 # 2.5 -- Stringed Hiload, Slog, and Slogchk together better - 1/31/14
 # 2.5 -- Switched from 3 results to 5 in "slogchck" - 1/31/14
 # 2.5 -- Added the Pod function through the script - 1/31/14
@@ -79,15 +80,14 @@ ssh -tq ${uname}@${acct}.wpengine.com "rm result.${epoch}.txt host.${epoch}.txt 
 #ng-logs - show log hits from nginx that took the longest time to complete.
 # Usage L2 ng-logs <account>
 function ng-logs { 
-ssh -tq ${uname}@${acct}.wpengine.com "sudo cat /var/log/nginx/${acct}.access.log > /home/${uname}/${acct}.${epoch}.nginx && exit ; bash"
-scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.nginx ${acct}.${epoch}.nginx
-echo -e "\nDescription: Nginx log entries below are sorted by Page Load Time (8th | delimited column).\n"
-echo -e "\n${br}Slow requests that did NOT receive a 200 OK HTTP Status Code.\n"
-awk '!/\|200\|/' ${acct}.${epoch}.nginx| sort -t\| -rnk8| head
-echo -e "\n${br}Slow requests that received 200 OK HTTP Status Code.\n"
-awk '/\|200\|/' ${acct}.${epoch}.nginx| sort -t\| -rnk8| head
-echo -e "${br}"
-ssh -tq ${uname}@${acct}.wpengine.com "rm ${acct}.${epoch}.nginx && exit ; bash" && rm ${acct}.${epoch}.nginx
+ssh -tq ${uname}@${acct}.wpengine.com "sudo -v
+echo -e \"\\\nDescription: Nginx log entries below are sorted by Page Load Time (8th | delimited column).\"
+echo -e \"\\\n${sshbr}Slow requests that did NOT receive a 200 OK HTTP Status Code.\\\n\"
+sudo cat /var/log/nginx/${acct}.access.log | awk '!/\|200\|/'| sort -t\| -rnk8| head
+echo -e \"\\\n${sshbr}Slow requests that received 200 OK HTTP Status Code.\\\n\"
+sudo cat /var/log/nginx/${acct}.access.log | awk '/\|200\|/' | sort -t\| -rnk8| head
+echo -e \"${sshbr}\"
+exit"
 read -p "Check for slow SQL information? Y or N - " answer
 if [[ ${answer} = [yY]* ]]; then
 	sql-slow
@@ -157,14 +157,13 @@ fi
 #wp-plugins - show enabled plugins for an account.
 #Usage l2 wp-plugins <account>
 function wp-plugins {
-ssh -tq ${uname}@${acct}.wpengine.com "sudo -v && sudo grep \"table_prefix\" /nas/wp/www/sites/${acct}/wp-config.php > /home/${uname}/pf.${epoch}.txt && exit ; bash"
-scp -q ${uname}@${acct}.wpengine.com:/home/${uname}/pf.${epoch}.txt pf.${epoch}.txt
-pf=$(awk 'tolower($0) ~ /^\$table_prefix/ {gsub(/\"|;|'"'"'/,""); print $3}' pf.${epoch}.txt)
+ssh -tq ${uname}@${acct}.wpengine.com "sudo -v
+pf=\$(sudo grep \"table_prefix\" /nas/wp/www/sites/${acct}/wp-config.php | awk 'tolower(\$0) ~ /^\\\$table_prefix/ {gsub(/\"|;|'\"'\"'/,\"\"); print \$3}')
 db=wp_${acct}
-echo -e "\n"${br}"Enabled plugins for account "${acct}": \n"
-ssh -tq ${uname}@${acct}.wpengine.com "sudo mysql ${db} -e \"select * from ${pf}options where option_name='active_plugins';\"| tr '\"' '\n'| awk -F\/ '/^[a-zA-Z]/ {print \$1}'| sed 1d && exit ; bash"
+echo -e \"\\\n\"${sshbr}\"Enabled plugins for account \"${acct}\": \\\n\"
+sudo mysql \${db} -e \"select * from \${pf}options where option_name='active_plugins';\"| tr '\"' '\n'| awk -F\/ '/^[a-zA-Z]/ {print \$1}'| sed 1d
+exit"
 echo -e ${br}
-ssh -tq ${uname}@${acct}.wpengine.com "rm pf.${epoch}.txt && exit ; bash" && rm pf.${epoch}.txt
 }
 #---------------------------------------------------------------------------------------------#
 
