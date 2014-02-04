@@ -144,7 +144,7 @@ if [[ -n ${pod} ]]; then
 fi
 echo -e "\n\nDescription: Show UTC times when load was over 1.5x the number of processor cores for this server."
 echo -e ${br}
-ssh -tq ${uname}@${acct}.wpengine.com "if [[ ! -f /var/log/sysstat/sa${day} ]]; then echo -e \"\nInfo for ${day} does not exist, please try again.\"; else sudo sar -q -f /var/log/sysstat/sa${day}| awk -vcpu=$(grep ^processor /proc/cpuinfo| wc -l) '{if (\$5 > (1.5 * cpu)) print}'; fi && exit ; bash"
+ssh -tq ${uname}@${acct}.wpengine.com "if [[ ! -f /var/log/sysstat/sa${day} ]]; then echo -e \"\\\nInfo for ${day} does not exist, please try again.\"; else sudo sar -q -f /var/log/sysstat/sa${day}| awk -vcpu=\$(grep ^processor /proc/cpuinfo| wc -l) '{if (\$5 > (1.5 * cpu)) print}'; fi && exit ; bash"
 echo -e "\n${br}"
 read -p "Run \"slog\" for a certain time? HH:MM or X - " a
 echo
