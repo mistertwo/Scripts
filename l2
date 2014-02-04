@@ -1,6 +1,8 @@
 #!/bin/bash
 #Author: BMO and JM
 #Version: 0.2.6
+# 0.2.6 -- Color Coded a Menu Error Message - 2/4/14
+# 0.2.6 -- Can Exit the main menu now. - 2/4/14
 # 0.2.6 -- Made the menu more dynamic. - 2/4/14
 # 0.2.6 -- Changed the version numbers. 1.0 is when its rolled out to all. - 2/4/14
 # 2.5 -- Started cleaning up the multiple SSH connections - 1/31/14
@@ -484,10 +486,14 @@ while [[ -z ${opt} ]]; do
 	echo -e "${br}Available tasks:\n"
 	grep -irn "^##\s" ${0} | awk '{$1=""; print}' | sort
 	echo -e ${br}
-	read -p "Type function name that you wish to use: " opt
+	read -p "Type function name that you wish to use ( X to exit ): " opt
 	echo
+if [[ ${opt} = [xX] ]]; then
+	exit 0
+else
 account
 declare -F ${opt} &>/dev/null && echo && ${opt} && echo && exit 0 || echo -e "${opt}\nYou Didn't do it right! Try again.\n"; opt=""
+fi
 done
 }
 
@@ -506,7 +512,7 @@ else
 		echo -e "\nYour current username is set to: \033[1;31m"${uname}"\033[1;000m"
 		account
 		declare -F ${1} &>/dev/null && echo && ${1} && echo && exit 0 || 
-		echo -e "\nUsage is: l2 <function> <account> <optional argument>\n"
+		echo -e "\n\033[1;31m"Looks like you entered the wrong function."\033[1;000m\n\nUsage is: l2 <function> <account> <optional argument>\n"
 		acct=
 		three=
 		four=
