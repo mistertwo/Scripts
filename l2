@@ -1,6 +1,8 @@
 #!/bin/bash
 #Author: BMO and JM
-#Version: 2.5
+#Version: 0.2.6
+# 0.2.6 -- Made the menu more dynamic. - 2/4/14
+# 0.2.6 -- Changed the version numbers. 1.0 is when its rolled out to all. - 2/4/14
 # 2.5 -- Started cleaning up the multiple SSH connections - 1/31/14
 # 2.5 -- Stringed Hiload, Slog, and Slogchk together better - 1/31/14
 # 2.5 -- Switched from 3 results to 5 in "slogchck" - 1/31/14
@@ -11,14 +13,13 @@
 # 2.2 -- A few functions have been stringed together
 # 2.2 -- Still working on the "Find" function
 # 2.1 -- Cleaner commands and results with the "Find" function
-# 2.0 -- New "Run It" and "Menu" system
-# 2.0 -- Merged the "wp" script into the "l2" script. Lots of new functions to play with
-# 2.0 -- Skipped a release for this one ^_^
+
+
 
 
 #################### FUNCTIONS ####################
 #---------------------------------------------------------------------------------------------#
-#Description: Grab occurrences of all ${err} HTTP codes in an account's logs.
+## www-codes => Description: Grab occurrences of a certain HTTP code in an account's logs.
 #Usage l2 www-codes <account> <error code>
 function www-codes {
 if [[ -z ${three} ]]; then
@@ -42,7 +43,7 @@ ssh -tq ${uname}@${acct}.wpengine.com "rm ${acct}.${epoch}.nginx ${acct}.${epoch
 }
 #---------------------------------------------------------------------------------------------#
 
-#Description: Used to touch a file that is 404'ing in an account repeatedly.
+## tfile => Description: Used to touch a file that is 404'ing in an account repeatedly.
 #Usage l2 tfile <account> <file name>
 function tfile { 
 if [[ -z ${three} ]]; then
@@ -55,7 +56,7 @@ echo ${sp}| ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/sites/${acct} 
 }
 #---------------------------------------------------------------------------------------------#
 
-#Description: Output lines to migrate every account associated with another account, including parent and children.
+## mig-all => Description: Output lines to migrate every account associated with another account, including parent and children.
 #Usage l2 mig-all <account> <Destination Pod>
 function mig-all {
 if [[ -z ${three} ]]; then
@@ -77,7 +78,7 @@ ssh -tq ${uname}@${acct}.wpengine.com "rm result.${epoch}.txt host.${epoch}.txt 
 }
 #---------------------------------------------------------------------------------------------#
 
-#ng-logs - show log hits from nginx that took the longest time to complete.
+## ng-logs => Description: Show log hits from nginx that took the longest time to complete.
 # Usage L2 ng-logs <account>
 function ng-logs { 
 ssh -tq ${uname}@${acct}.wpengine.com "sudo -v
@@ -95,7 +96,7 @@ fi
 }
 #---------------------------------------------------------------------------------------------#
 
-#sql-slow - Description: Display problematic MySQL information. (DO NOT PASTE THIS COMPLETE OUTPUT TO A CUSTOMER)
+## sql-slow => Description: Show problematic sql information.(DO NOT PASTE THIS COMPLETE OUTPUT TO A CUSTOMER)
 #usage l2 sql-slow <account>
 function sql-slow {
 pod
@@ -118,7 +119,7 @@ fi
 }
 #---------------------------------------------------------------------------------------------#
 
-#sql-heavy-rows - show which tables have over 5000 rows for an account.
+## sql-heavy-rows => Description: Show which tables have over 5000 rows for an account.
 #Usage l2 sql-heavey-rows <account>
 function sql-heavy-rows {
 ssh -tq ${uname}@${acct}.wpengine.com "sudo -v
@@ -129,7 +130,7 @@ echo -e ${br}
 }
 #---------------------------------------------------------------------------------------------#
 
-# show load that was 1.5x the number of processer cores.
+## hiload => Description: Show load that was 1.5x the number of processer cores.
 # Usage l2 hiload <account> <DD>
 function hiload { 
 if [[ -z ${three} ]]; then
@@ -154,7 +155,7 @@ fi
 }
 #---------------------------------------------------------------------------------------------#
 
-#wp-plugins - show enabled plugins for an account.
+## wp-plugins => Description: Show enabled plugins for an account.
 #Usage l2 wp-plugins <account>
 function wp-plugins {
 ssh -tq ${uname}@${acct}.wpengine.com "sudo -v
@@ -167,7 +168,7 @@ echo -e ${br}
 }
 #---------------------------------------------------------------------------------------------#
 
-#Description: Shows how many min/hr had log hits. Ideally 60 for busy site meaning at least one hit per minute happened, and, thus, no downtime.
+## uptime => Description: Shows how many min/hr had log hits. Ideally 60 for busy site meaning at least one hit per minute happened, and, thus, no downtime.
 #Usage l2 uptime <account> <two-digit-day> <three-digit-month> (IE: l2 uptime bmoore 12 dec)
 function uptime {
 if [[ -z ${three} ]]; then 
@@ -198,23 +199,27 @@ ssh -tq ${uname}@${acct}.wpengine.com "rm ${acct}.${epoch}.access.log && exit ; 
 }
 #---------------------------------------------------------------------------------------------#
 
-# Description: Get the accounts NGINX config file and open it using Nano
+## nginx-confg =>  Description: Open the accounts NGINX Config file with less.
 #Usage: l2 nginx-conf <account>
 function nginx-config {
-	scp -q ${uname}@${acct}.wpengine.com:/nas/wp/conf/lb/sites/${acct}.conf ${acct}.${epoch}.conf
-	nano ${acct}.${epoch}.conf
-	rm ${acct}.${epoch}.conf
+	ssh -tq ${uname}@${acct}.wpengine.com "if [[ ! -f /nas/wp/conf/lb/sites/${acct}.conf ]]
+	then echo -e \"\\\nNo File, maybe you typed the account wrong?\"
+	exit
+    else
+    less /nas/wp/conf/lb/sites/${acct}.conf
+    exit
+	fi"
 }
 #---------------------------------------------------------------------------------------------#
 
-# Description: Login to an Account via SSH (location optional)
+## login =>  Description: Login to an Account via SSH (location optional)
 # UsageL l2 login <account> <environment> <location>
 function login {
 	pod
 	if [[ -n ${pod} ]]; then
-		if [[ -n ${four} ]]; then
-		echo -e ${br}"Alright, Logging into ${pod} and going to ${four}.\n"
-			ssh -tq ${uname}@${pod}.wpengine.com "cd ${four}; bash"
+		if [[ -n ${three} ]]; then
+		echo -e ${br}"Alright, Logging into ${pod} and going to ${three}.\n"
+			ssh -tq ${uname}@${pod}.wpengine.com "cd ${three}; bash"
 		else
 		echo -e ${br}"Alright, logging into ${pod}.\n"
 			ssh -tq ${uname}@${pod}.wpengine.com
@@ -233,7 +238,7 @@ function login {
 }
 #---------------------------------------------------------------------------------------------#
 
-# Description: Find either a File or a String of Text in the account
+## find => Description: Find either a File or a String of Text in the account.
 # Usage: l2 find <account> <envir> "<file/text>"
 function find {
 	envir
@@ -278,7 +283,7 @@ function find {
 }
 #---------------------------------------------------------------------------------------------#
 
-# Description: Get the files for a Site or Specific Folder from our Duplicity Backup (full backup)
+## duplicity => Description: Get the files for a Site or Specific Folder from our Duplicity Backup (full backup)
 # Usage: l2 duplicity <account> <date> <file/folder>
 function duplicity {
 	if [[ ${three} = [0-9]* ]]; then
@@ -333,7 +338,7 @@ function duplicity {
 }
 #---------------------------------------------------------------------------------------------#
 
-# Description: Count which Apache log had the most hits in a time range.
+## slog => Description: Count which Apache log had the most hits in a time range.
 # Usage: l2 slog <account> <HH:MM>
 # Example l2 slog wpengine 14:25
 function slog {
@@ -374,7 +379,7 @@ if (( ${min} <= 14 )); then
  }
 #---------------------------------------------------------------------------------------------#
 
-# Description: Show heaviest requests and IP's in log after running slog.
+## slogchk => Description: Show heaviest requests and IP's in log after running "slog".
 # Usage: l2 slogchk <account> <HH:MM>
 # Example l2 slogchk wpengine 14:25
 function slogchk {
@@ -477,21 +482,7 @@ fi
 function menu {
 while [[ -z ${opt} ]]; do
 	echo -e "${br}Available tasks:\n"
-	echo -e "www-codes => Description: Grab occurrences of a certain HTTP code in an account's logs."
-	echo -e "tfile => Description: Used to touch a file that is 404'ing in an account repeatedly."
-	echo -e "mig-all => Description: Output lines to migrate every account associated with another account, including parent and children."
-	echo -e "ng-logs => Description: Show log hits from nginx that took the longest time to complete."
-	echo -e "sql-slow => Description: Show problematic sql information."
-	echo -e "sql-heavy-rows => Description: Show which tables have over 5000 rows for an account."
-	echo -e "hiload => Description: Show load that was 1.5x the number of processer cores."
-	echo -e "wp-plugins => Description: Show enabled plugins for an account."
-	echo -e "uptime => Description: Shows how many min/hr had log hits. Ideally 60 for busy site meaning at least one hit per minute happened, and, thus, no downtime."
-	echo -e "nginx-confg =>  Description: Get the accounts NGINX config file and opens it with Less."
-	echo -e "login =>  Description: Login to an Account via SSH (location optional)"
-	echo -e "find => Description: Find either a File or a String of Text in the account"
-	echo -e "duplicity => Description: Get the files for a Site or Specific Folder from our Duplicity Backup (full backup)"
-	echo -e "slog => Description: Count which Apache log had the most hits in a time range."
-	echo -e "slogchk => Description: Show heaviest requests and IP's in log after running \"slog\"."
+	grep -irn "^##\s" ${0} | awk '{$1=""; print}' | sort
 	echo -e ${br}
 	read -p "Type function name that you wish to use: " opt
 	echo
