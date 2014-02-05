@@ -1,6 +1,7 @@
 #!/bin/bash
 #Author: BMO and JM
-#Version: 0.2.6
+#Version: 0.2.7
+# 0.2.7 -- Better loop from slog to slogchk - 2/5/14
 # 0.2.6 -- Color Coded a Menu Error Message - 2/4/14
 # 0.2.6 -- Can Exit the main menu now. - 2/4/14
 # 0.2.6 -- Made the menu more dynamic. - 2/4/14
@@ -292,7 +293,7 @@ function duplicity {
 		date=${three}
 	else
 		# Get the Date to restore from
-		read -p "From what date? YYYMMDD " date
+		read -p "From what date? YYYYMMDD " date
 		echo
     fi
     if [[ -n ${four} ]]; then
@@ -371,12 +372,15 @@ if (( ${min} <= 14 )); then
  done < <(sudo find /var/log/apache2/ -maxdepth 1 -type f ! -name \*staging\* ! -name \*gz ! -name \*1) | sort -nk1 | tail
  exit"
  echo -e ${br}
- read -p "Which Account's log would you like to check? X to quit - " logchk
- if [[ ${logchk} = [Xx] ]]; then
+ read -p "Which Account's log would you like to check? X to quit - " a
+ if [[ ${a} = [Xx] ]]; then
  	exit
  else
- 	acct=${logchk}
- 	slogchk
+ 	while [[ ${a} = [a-zA-Z][a-zA-Z]* ]]; do
+		acct=${a}
+		slogchk
+		read -p "Check Another Account? \"account name\" or X - " a
+	done
  fi
  }
 #---------------------------------------------------------------------------------------------#
@@ -414,11 +418,6 @@ do sudo awk '{print \$1}' | sort | uniq -c | sort -nk1 | tail -5
 done < <(sudo grep -E \"${hhmm}\" ${hlog})
 exit"
 echo -e ${br}
-read -p "Check Another Account? \"account name\" or X - " a
-if [[ ${a} = [a-zA-Z][a-zA-Z]* ]]; then
-	acct=${a}
-	slogchk
-fi
 }
 #---------------------------------------------------------------------------------------------#
 
