@@ -1,6 +1,8 @@
 #!/bin/bash
 #Author: BMO and JM
-#Version: 0.2.7
+#Version: 0.2.8
+# 0.2.8 -- Cleaned up output of slog, slogchk, and hiload -BMO 2/7/14
+# 0.2.8 -- Converted slog function from while loop to for loop. This fixed the double sudo problem -BMO 2/7/14
 # 0.2.7 -- Better SSH login - 2/5/14
 # 0.2.7 -- Cleaning up Out put of "br" and "sshbr" - 2/5/14
 # 0.2.7 -- Better loop from slog to slogchk - 2/5/14
@@ -12,8 +14,6 @@
 # 2.5 -- Stringed Hiload, Slog, and Slogchk together better - 1/31/14
 # 2.5 -- Switched from 3 results to 5 in "slogchck" - 1/31/14
 # 2.5 -- Added the Pod function through the script - 1/31/14
-# 2.4 -- Better Account function to detect Pods - 1/30/14
-
 
 
 
@@ -81,7 +81,7 @@ ssh -tq ${uname}@${acct}.wpengine.com "rm result.${epoch}.txt host.${epoch}.txt 
 ## ng-logs => Description: Show log hits from nginx that took the longest time to complete.
 # Usage L2 ng-logs <account>
 function ng-logs { 
-ssh -tq ${uname}@${acct}.wpengine.com "sudo -v
+ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
 echo -e \"\\\nDescription: Nginx log entries below are sorted by Page Load Time (8th | delimited column).\"
 echo -e \"\\\n${sshbr}Slow requests that did NOT receive a 200 OK HTTP Status Code.\\\n\"
 sudo cat /var/log/nginx/${acct}.access.log | awk '!/\|200\|/'| sort -t\| -rnk8| head
@@ -104,7 +104,7 @@ if [[ -n ${pod} ]]; then
 	acct=${pod}
 fi 
 echo -e "\nDescription: Display problematic MySQL information. (DO NOT PASTE THIS COMPLETE OUTPUT TO A CUSTOMER)\n"
-ssh -tq ${uname}@${acct}.wpengine.com "sudo -v
+ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
 echo -e \"\\n\"${sshbr}\"Show MySQL users that hit the slow query log the most.\\n\"
 sudo awk '/User@Host/ {print \$3}' /var/log/mysql/mysql-slow.log| cut -d\[ -f1| sort| uniq -c| sort -nk1| tail -10
 echo -e ${sshbr}\"Count of which PHP lines that created slow queries: \\n\"
@@ -122,7 +122,7 @@ fi
 ## sql-heavy-rows => Description: Show which tables have over 5000 rows for an account.
 #Usage l2 sql-heavey-rows <account>
 function sql-heavy-rows {
-ssh -tq ${uname}@${acct}.wpengine.com "sudo -v
+ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
 echo -e \"\\nTables which have over 5000 rows.\\n${sshbr}Account: ${acct}\nDatabase: wp_${acct}\\n${sshbr}\"
 cd /nas/wp/www/sites/${acct} && sudo mysql wp_${acct} -e 'show table status where rows > 5000;'| awk '{print \$1,\$5 }'| sort -nk2| column -t
 exit"
@@ -142,9 +142,13 @@ pod
 if [[ -n ${pod} ]]; then
 	acct=${pod}
 fi
-echo -e "\n\nDescription: Show UTC times when load was over 1.5x the number of processor cores for this server."
-echo -e ${br}
-ssh -tq ${uname}@${acct}.wpengine.com "if [[ ! -f /var/log/sysstat/sa${day} ]]; then echo -e \"\\\nInfo for ${day} does not exist, please try again.\"; else sudo sar -q -f /var/log/sysstat/sa${day}| awk -vcpu=\$(grep ^processor /proc/cpuinfo| wc -l) '{if (\$5 > (1.5 * cpu)) print}'; fi && exit ; bash"
+ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
+echo -e \"\\\n${sshbr}Description: Show UTC times when load was over 1.5x the number of processor cores for this server.\"
+if [[ ! -f /var/log/sysstat/sa${day} ]]
+then echo -e \"\\\nInfo for ${day} does not exist, please try again.\"
+else sudo sar -q -f /var/log/sysstat/sa${day}| awk -vcpu=\$(grep ^processor /proc/cpuinfo| wc -l) '{if (\$5 > (1.5 * cpu)) print}'
+fi
+exit"
 echo -e "\n${br}"
 read -p "Run \"slog\" for a certain time? HH:MM or X - " a
 echo
@@ -158,7 +162,7 @@ fi
 ## wp-plugins => Description: Show enabled plugins for an account.
 #Usage l2 wp-plugins <account>
 function wp-plugins {
-ssh -tq ${uname}@${acct}.wpengine.com "sudo -v
+ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
 pf=\$(sudo grep \"table_prefix\" /nas/wp/www/sites/${acct}/wp-config.php | awk 'tolower(\$0) ~ /^\\\$table_prefix/ {gsub(/\"|;|'\"'\"'/,\"\"); print \$3}')
 db=wp_${acct}
 echo -e \"\\\n\"${sshbr}\"Enabled plugins for account \"${acct}\": \\\n\"
@@ -361,14 +365,13 @@ if (( ${min} <= 14 )); then
  if [[ -n ${pod} ]]; then
 	acct=${pod}
  fi
- echo -e "\n${br}\nApache log counts for ${hhmm}:\n"
- ssh -tq ${uname}@${acct}.wpengine.com "
- while read log
- do count=\$(sudo grep -E \"${hhmm}\" \${log} | wc -l)
- echo \${count} - \$(echo \${log} | awk -F'/' '{print \$5}' | awk -F'.' '{print \$1}') | grep -v ^0
- done < <(sudo -v && sudo find /var/log/apache2/ -maxdepth 1 -type f ! -name \*staging\* ! -name \*gz ! -name \*1) | sort -nk1 | tail
- exit"
- echo -e ${br}
+ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
+echo -e \"\\\n${sshbr}Apache log counts for ${hhmm}:\\\n\\\nHits - Account\"
+for log in \$(sudo find /var/log/apache2/ -maxdepth 1 -type f ! -name *staging* ! -name *gz ! -name *1)
+do echo \$(sudo grep -E \"${hhmm}\" \${log} | wc -l) - \$(echo \${log} | awk -F'/' '{print \$5}' | awk -F'.' '{print \$1}') | grep -v ^0
+done | sort -nk1 | tail
+exit"
+echo -e ${br}
  read -p "Which Account's log would you like to check? X to quit - " a
  if [[ ${a} = [Xx] ]]; then
  	exit
@@ -402,19 +405,18 @@ if (( ${min} <= 14 )); then
  elif (( ${min} > 44 )) && (( ${min} <= 59 )); then
  	hhmm="${year}:${hour}:(4[5-9]|5[0-9])"
  fi
-hlog="/var/log/apache2/${acct}.access.log"
-ssh -tq ${uname}@${acct}.wpengine.com "sudo -v
-echo -e \"\nAccount - ${acct}\"
-echo -e \"\n\"${sshbr}\"\nMost frequent requests: \n\"
+hlog="/var/log/apache2/${acct}.access.log" 
+ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
+echo -e \"\\\n${sshbr}Most frequent requests\\\n\"
 while read line
-do sudo awk '{print \$1,\$4\"]\",\$5,\$6,\$7,\$8}'
+do awk '{print \$1,\$4\"]\",\$5,\$6,\$7,\$8}'
 done < <(sudo grep -E \"${hhmm}\" ${hlog})| grep -oP '(?<=\\\").*(?=\\\")' | sort | uniq -c | sort -nk1 | tail -5
-echo -e ${sshbr}\"\nMost frequent IP's: \n\"
+echo -e \"\\\n${sshbr}Most frequent IP's\\\n\"
 while read line
-do sudo awk '{print \$1}' | sort | uniq -c | sort -nk1 | tail -5
+do awk '{print \$1}' | sort | uniq -c | sort -nk1 | tail -5
 done < <(sudo grep -E \"${hhmm}\" ${hlog})
 exit"
-echo -e ${br}
+echo -e "\n${br}"
 }
 #---------------------------------------------------------------------------------------------#
 
