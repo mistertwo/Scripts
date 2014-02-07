@@ -1,6 +1,7 @@
 #!/bin/bash
 #Author: BMO and JM
 #Version: 0.2.8
+# 0.2.8 -- Added a fun Acct-count function -BMO 2/7/14
 # 0.2.8 -- Cleaned up output of slog, slogchk, and hiload -BMO 2/7/14
 # 0.2.8 -- Converted slog function from while loop to for loop. This fixed the double sudo problem -BMO 2/7/14
 # 0.2.7 -- Better SSH login - 2/5/14
@@ -12,8 +13,7 @@
 # 0.2.6 -- Changed the version numbers. 1.0 is when its rolled out to all. - 2/4/14
 # 2.5 -- Started cleaning up the multiple SSH connections - 1/31/14
 # 2.5 -- Stringed Hiload, Slog, and Slogchk together better - 1/31/14
-# 2.5 -- Switched from 3 results to 5 in "slogchck" - 1/31/14
-# 2.5 -- Added the Pod function through the script - 1/31/14
+
 
 
 
@@ -420,6 +420,16 @@ echo -e "\n${br}"
 }
 #---------------------------------------------------------------------------------------------#
 
+## acct-count => Description: Count how many active accounts a customer has.
+# Usage: l2 acct-count <account>
+function acct-count {
+ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v; count=0
+for i in \$(sudo /nas/wp/ec2/cluster parent-child bmoore)
+do [ -d /nas/wp/www/sites/\$i ] && let count=count+1; done
+echo -e \"\\\n${sshbr}\\\n   \033[1;31m"${acct}"\033[1;000m Has \${count} Active Accounts on \$(hostname)\\\n\\\n${sshbr}\"
+exit"
+}
+#---------------------------------------------------------------------------------------------#
 
 #################### Determine Environment ####################
 function envir {
