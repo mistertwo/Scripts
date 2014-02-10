@@ -1,18 +1,14 @@
-#!/bin/bash
+#!/bin/bash -x
 #Author: BMO and JM
-#Version: 0.2.8
+#Version: 0.2.9
+# 0.2.9 -- Added an Exit condition to the Login Function - BMO 2/10/14
+# 0.2.9 -- Added Get and Put File functions - BMO 2/10/14
 # 0.2.8 -- Added a fun Acct-count function -BMO 2/7/14
 # 0.2.8 -- Cleaned up output of slog, slogchk, and hiload -BMO 2/7/14
 # 0.2.8 -- Converted slog function from while loop to for loop. This fixed the double sudo problem -BMO 2/7/14
 # 0.2.7 -- Better SSH login - 2/5/14
 # 0.2.7 -- Cleaning up Out put of "br" and "sshbr" - 2/5/14
 # 0.2.7 -- Better loop from slog to slogchk - 2/5/14
-# 0.2.6 -- Color Coded a Menu Error Message - 2/4/14
-# 0.2.6 -- Can Exit the main menu now. - 2/4/14
-# 0.2.6 -- Made the menu more dynamic. - 2/4/14
-# 0.2.6 -- Changed the version numbers. 1.0 is when its rolled out to all. - 2/4/14
-# 2.5 -- Started cleaning up the multiple SSH connections - 1/31/14
-# 2.5 -- Stringed Hiload, Slog, and Slogchk together better - 1/31/14
 
 
 
@@ -27,6 +23,12 @@ if [[ -z ${three} ]]; then
 else
 	err=${three}
 fi
+# array=( 200 301 302 304 400 403 404 500 501 502 503 504 507 )
+# for i in $(awk -F'\s' '{print $1}' ${array[@]}); do
+# 	if [[ ${array[*]} != ${err} ]]; then
+# 		echo -e "\nLooks like you are looking for the wrong Code.\n" && exit
+# 	fi
+#done
 ssh -tq ${uname}@${acct}.wpengine.com "sudo cat /var/log/nginx/${acct}.access.log > /home/${uname}/${acct}.${epoch}.nginx && sudo cat /var/log/apache2/${acct}.access.log > /home/${uname}/${acct}.${epoch}.apache && exit ; bash"
 scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.nginx ${acct}.${epoch}.nginx && scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.apache ${acct}.${epoch}.apache
 echo -e "\nDescription: Displays requests that had highest occurrences of the ${err} HTTP Status in ${acct}'s logs. Request counts are to the left of the requests below."
@@ -232,10 +234,20 @@ function login {
 		envir
 		if [[ -n ${four} ]]; then
 		echo -e ${br}"Alright, Logging into the ${envir} and going to ${four}\n"
-			ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct}/${four}; bash"
+			ssh -tq ${uname}@${acct}.wpengine.com " if [[ -d /nas/wp/www/${envir}/${acct} ]]
+			then cd /nas/wp/www/${envir}/${acct}/${four}
+			else
+			echo -e \"The Account, \033[1;31m"${acct}"\033[1;000m, no longer has a Site Directory, exiting.\"
+			exit
+			fi; bash"
 		else
 		echo -e ${br}"Alright, logging into the ${envir} Server\n"
-			ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct}; bash"
+			ssh -tq ${uname}@${acct}.wpengine.com "if [[ -d /nas/wp/www/${envir}/${acct} ]]
+			then cd /nas/wp/www/${envir}/${acct}
+			else
+			echo -e \"The Account, \033[1;31m"${acct}"\033[1;000m, no longer has a Site Directory, exiting.\"
+			exit
+		    fi; bash"
 		fi
 	fi
 	echo
@@ -424,10 +436,60 @@ echo -e "\n${br}"
 # Usage: l2 acct-count <account>
 function acct-count {
 ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v; count=0
-for i in \$(sudo /nas/wp/ec2/cluster parent-child bmoore)
+for i in \$(sudo /nas/wp/ec2/cluster parent-child ${acct})
 do [ -d /nas/wp/www/sites/\$i ] && let count=count+1; done
 echo -e \"\\\n${sshbr}\\\n   \033[1;31m"${acct}"\033[1;000m Has \${count} Active Accounts on \$(hostname)\\\n\\\n${sshbr}\"
+for i in \$(sudo /nas/wp/ec2/cluster parent-child ${acct})
+do let count=count+1; done
+echo -e \"\\\n   \033[1;31m"${acct}"\033[1;000m Has \${count} Accounts Active or De-Active.\\\n\\\n${sshbr}\"
 exit"
+}
+#---------------------------------------------------------------------------------------------#
+
+## get-file => Description: Get a file from a Site Directory
+# Usage: l2 get-file <account> <envir> <Remote File> <Local Dest>
+function get-file {
+	envir
+	if [[ -n ${four} ]] && [[ -n ${five} ]]; then
+		remote=${four}
+		local=${five}
+	elif [[ -n ${four} ]] && [[ -z ${five} ]]; then
+		dir=${four}
+		read -p "Where would you like this file on your local machine? " local
+	else
+		read -p "Where is this file in the Sites Directory? " remote
+		echo && read -p "Where would you like this file on your local machine? " local
+	fi
+		echo -e "\nGetting the file from the ${envir} Server\n${br}"
+		scp -rq ${uname}@${acct}.wpengine.com:/nas/wp/www/${envir}/${acct}/${remote} ${local}
+		read -p "What command do you want to use to Open it with? (Press Enter to skip) " cmd
+			if [[ -z ${cmd} ]]; then
+				exit 0
+			else
+			echo -e "\nRight, running \"${cmd} ${local}\"\n${br}"
+			sleep 2
+			${cmd} ${local}
+			fi
+}
+#---------------------------------------------------------------------------------------------#
+
+## put-file => Description: Put a file in Site Directory
+# Usage: l2 put-file <account> <envir> <Local File> <Remote Dest>
+function put-file {
+	envir
+	if [[ -n ${four} ]] && [[ -n ${five} ]]; then
+		local=${four}
+		remote=${five}
+	elif [[ -n ${four} ]] && [[ -z ${five} ]]; then
+		local=${four}
+		read -p "Where do you want it on the server? " remote
+	else
+		read -p "Where is the file? " local
+		echo && read -p "Where do you want it on the server? " remote
+	fi
+		echo -e "\nPutting the File on the ${envir} Server\n"
+		scp -rq ${local} ${uname}@${acct}.wpengine.com:/home/${uname}/${local}
+		ssh -tq ${uname}@${acct}.wpengine.com "sudo mv ${local} /nas/wp/www/${envir}/${acct}/${remote} && exit ; bash"
 }
 #---------------------------------------------------------------------------------------------#
 
@@ -473,7 +535,7 @@ uname=
 #################### Get Account ####################
 function account {
 if [[ -z ${acct} ]]; then
-	read -p "What Account are we working with? " acct
+	echo && read -p "What Account are we working with? " acct
 	pod
 fi
 }
@@ -510,6 +572,7 @@ done
 acct=${2}
 three=${3}
 four=${4}
+five=${5}
 br="++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n"
 sshbr="++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\\\n"
 epoch=$(date +%s)
@@ -524,6 +587,7 @@ else
 		acct=
 		three=
 		four=
+		five=
 		menu
 	elif [[ ${1} = uname ]]; then
 		setuname
@@ -532,6 +596,7 @@ else
 		acct=
 		three=
 		four=
+		five=
 		menu
 	fi
 fi
