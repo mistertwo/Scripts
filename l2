@@ -1,6 +1,8 @@
 #!/bin/bash
 #Author: BMO and JM
-#Version: 0.2.9
+#Version: 0.3.0
+# 0.3.0 -- Fixed the "Pod" check in login. - BMO 2/12/14
+# 0.3.0 -- Yay, 0.3!
 # 0.2.9 -- Added an Exit condition to the Login Function - BMO 2/10/14
 # 0.2.9 -- Added Get and Put File functions - BMO 2/10/14
 # 0.2.8 -- Added a fun Acct-count function -BMO 2/7/14
@@ -219,7 +221,7 @@ function nginx-config {
 #---------------------------------------------------------------------------------------------#
 
 ## login =>  Description: Login to an Account via SSH (location optional)
-# UsageL l2 login <account> <environment> <location>
+# Usage l2 login <account> <environment> <location>
 function login {
 	pod
 	if [[ -n ${pod} ]]; then
@@ -544,7 +546,7 @@ fi
 function pod {
 if [[ ${acct} = [0-9]* ]]; then
 	pod="pod-${acct}"
-elif [[ ${acct} = [pod-0-9]* ]]; then
+elif [[ ${acct} = pod-[0-9]* ]]; then
 	pod=${acct}
 fi
 }
