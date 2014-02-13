@@ -1,6 +1,7 @@
 #!/bin/bash
 #Author: BMO and JM
 #Version: 0.3.1
+# 0.3.1 -- Bug in the transition from slog to slogchk where the account name has numbers fixed -BMO 2/13/14
 # 0.3.1 -- Made the Menu Items red for easier reading -BMO 2/13/14
 # 0.3.1 -- Only asking to move on to "slog" from "hiload" if day = today. -BMO 2/13/14
 # 0.3.1 -- Added a better "day" variable to hiload, where it uses today date if none was defined. -BMO 2/13/14
@@ -396,7 +397,7 @@ echo -e ${br}
  if [[ ${a} = [Xx] ]]; then
  	exit
  else
- 	while [[ ${a} = [a-zA-Z][a-zA-Z]* ]]; do
+ 	while [[ ${a} = [a-zA-Z][a-zA-Z0-9]* ]]; do
 		acct=${a}
 		slogchk
 		read -p "Check Another Account? \"account name\" or X - " a
