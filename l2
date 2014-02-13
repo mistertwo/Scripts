@@ -1,6 +1,11 @@
 #!/bin/bash
 #Author: BMO and JM
-#Version: 0.3.0
+#Version: 0.3.1
+# 0.3.1 -- Made the Menu Items red for easier reading -BMO 2/13/14
+# 0.3.1 -- Only asking to move on to "slog" from "hiload" if day = today. -BMO 2/13/14
+# 0.3.1 -- Added a better "day" variable to hiload, where it uses today date if none was defined. -BMO 2/13/14
+# 0.3.1 -- "htop" into "hiload" was strung together -BMO 2/13/14
+# 0.3.1 -- Added the "htop" function -BMO 2/13/14
 # 0.3.0 -- Fixed the "Pod" check in login. - BMO 2/12/14
 # 0.3.0 -- Yay, 0.3!
 # 0.2.9 -- Added an Exit condition to the Login Function - BMO 2/10/14
@@ -8,9 +13,6 @@
 # 0.2.8 -- Added a fun Acct-count function -BMO 2/7/14
 # 0.2.8 -- Cleaned up output of slog, slogchk, and hiload -BMO 2/7/14
 # 0.2.8 -- Converted slog function from while loop to for loop. This fixed the double sudo problem -BMO 2/7/14
-# 0.2.7 -- Better SSH login - 2/5/14
-# 0.2.7 -- Cleaning up Out put of "br" and "sshbr" - 2/5/14
-# 0.2.7 -- Better loop from slog to slogchk - 2/5/14
 
 
 
@@ -47,7 +49,7 @@ ssh -tq ${uname}@${acct}.wpengine.com "rm ${acct}.${epoch}.nginx ${acct}.${epoch
 }
 #---------------------------------------------------------------------------------------------#
 
-## tfile => Description: Used to touch a file that is 404'ing in an account repeatedly.
+##DONT USE: tfile => Description: Used to touch a file that is 404'ing in an account repeatedly.
 #Usage l2 tfile <account> <file name>
 function tfile { 
 if [[ -z ${three} ]]; then
@@ -138,7 +140,7 @@ echo -e ${br}
 # Usage l2 hiload <account> <DD>
 function hiload { 
 if [[ -z ${three} ]]; then
-	read -p "Which Day (must be in 2 digit format)? " day
+	day=$(date +%d)
 else
 	day=${three}
 fi
@@ -154,11 +156,15 @@ else sudo sar -q -f /var/log/sysstat/sa${day}| awk -vcpu=\$(grep ^processor /pro
 fi
 exit"
 echo -e "\n${br}"
+if [[ ${day} = `date +%d` ]]; then
 read -p "Run \"slog\" for a certain time? HH:MM or X - " a
 echo
 if [[ ${a} = [0-9][0-9]:[0-9][0-9] ]]; then
 	three=${a}
 	slog
+fi
+else
+	exit 0
 fi
 }
 #---------------------------------------------------------------------------------------------#
@@ -495,6 +501,20 @@ function put-file {
 }
 #---------------------------------------------------------------------------------------------#
 
+## htop => Description: Run htop on the customers server.
+## Usage: l2 htop <account>
+function htop {
+	if [[ -n ${pod} ]]; then
+		acct=${pod}
+	fi
+	ssh -tq ${uname}@${acct}.wpengine.com "htop; exit"
+	echo && read -p "Would you like to run the hiload function too? ( X to exit ) - " q
+		if [[ ${q} = [xX] ]]; then
+			exit 0
+		else
+			hiload
+	fi
+}
 #################### Determine Environment ####################
 function envir {
 if [[ -n ${three} ]]; then
@@ -556,7 +576,7 @@ fi
 function menu {
 while [[ -z ${opt} ]]; do
 	echo -e "${br}Available tasks:\n"
-	grep -irn "^##\s" ${0} | awk '{$1=""; print}' | sort
+	grep -irn "^##\s" ${0} | awk '{$1=""; $2="\033[1;31m"$2"\033[1;000m"; print}' | sort
 	echo -e ${br}
 	read -p "Type function name that you wish to use ( X to exit ): " opt
 	echo
