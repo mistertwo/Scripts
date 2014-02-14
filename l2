@@ -23,7 +23,7 @@
 ## www-codes => Description: Grab occurrences of a certain HTTP code in an account's logs.
 #Usage l2 www-codes <account> <error code>
 function www-codes {
-if [[ -z ${three} ]]; then
+if [[ -z ${three} ]] && [[ -z ${err} ]]; then
 	read -p "What HTTP Code would you like to search for? " err
 else
 	if [[ -z ${err} ]]; then
