@@ -517,7 +517,7 @@ function put-file {
 #---------------------------------------------------------------------------------------------#
 
 ## htop => Description: Run htop on the customers server.
-## Usage: l2 htop <account>
+# Usage: l2 htop <account>
 function htop {
 	if [[ -n ${pod} ]]; then
 		acct=${pod}
