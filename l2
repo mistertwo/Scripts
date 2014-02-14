@@ -1,6 +1,8 @@
 #!/bin/bash
 #Author: BMO and JM
-#Version: 0.3.1
+#Version: 0.3.2
+# 0.3.2 -- Added a condition check to the "www-codes" function -BMO 2/14/14
+# 0.3.1 -- More dynamic "cd to" options when logging in -BMO 2/13/14
 # 0.3.1 -- Bug in the transition from slog to slogchk where the account name has numbers fixed -BMO 2/13/14
 # 0.3.1 -- Made the Menu Items red for easier reading -BMO 2/13/14
 # 0.3.1 -- Only asking to move on to "slog" from "hiload" if day = today. -BMO 2/13/14
@@ -11,9 +13,7 @@
 # 0.3.0 -- Yay, 0.3!
 # 0.2.9 -- Added an Exit condition to the Login Function - BMO 2/10/14
 # 0.2.9 -- Added Get and Put File functions - BMO 2/10/14
-# 0.2.8 -- Added a fun Acct-count function -BMO 2/7/14
-# 0.2.8 -- Cleaned up output of slog, slogchk, and hiload -BMO 2/7/14
-# 0.2.8 -- Converted slog function from while loop to for loop. This fixed the double sudo problem -BMO 2/7/14
+
 
 
 
@@ -26,27 +26,41 @@ function www-codes {
 if [[ -z ${three} ]]; then
 	read -p "What HTTP Code would you like to search for? " err
 else
-	err=${three}
+	if [[ -z ${err} ]]; then
+		err=${three}
+	fi
 fi
-# array=( 200 301 302 304 400 403 404 500 501 502 503 504 507 )
-# for i in $(awk -F'\s' '{print $1}' ${array[@]}); do
-# 	if [[ ${array[*]} != ${err} ]]; then
-# 		echo -e "\nLooks like you are looking for the wrong Code.\n" && exit
-# 	fi
-#done
-ssh -tq ${uname}@${acct}.wpengine.com "sudo cat /var/log/nginx/${acct}.access.log > /home/${uname}/${acct}.${epoch}.nginx && sudo cat /var/log/apache2/${acct}.access.log > /home/${uname}/${acct}.${epoch}.apache && exit ; bash"
-scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.nginx ${acct}.${epoch}.nginx && scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.apache ${acct}.${epoch}.apache
-echo -e "\nDescription: Displays requests that had highest occurrences of the ${err} HTTP Status in ${acct}'s logs. Request counts are to the left of the requests below."
-for nglog in ${acct}.${epoch}.nginx
-	do echo -e ${br}${nglog}"\n"
-		awk -F\| -v code=${err} '{if ($5 ~ code) printf "IP: %s Code: %s Referrer: %s Request: %s\n",$3,$5,$7,$10}' ${nglog}| sort| uniq -c| sort -nk1| tail
-	done
-for apachelog in ${acct}.${epoch}.apache
-	do echo -e ${br}${apachelog}"\n"
-		awk -v code=${err} '{if ($9 ~ code) printf "IP: %s Code: %s Referrer: %s Request: %s %s %s\n",$1,$9,$11,$6,$7,$8}' ${apachelog}| sort| uniq -c| sort -nk1| tail
-	done
-echo -e ${br}
-ssh -tq ${uname}@${acct}.wpengine.com "rm ${acct}.${epoch}.nginx ${acct}.${epoch}.apache && exit ; bash" && rm ${acct}.${epoch}.nginx ${acct}.${epoch}.apache
+array=( 200 301 302 304 400 403 404 500 501 502 503 504 507 )
+for i in ${array[*]}; do
+	if [[ ${i} = ${err} ]]; then
+		ssh -tq ${uname}@${acct}.wpengine.com "sudo cat /var/log/nginx/${acct}.access.log > /home/${uname}/${acct}.${epoch}.nginx && sudo cat /var/log/apache2/${acct}.access.log > /home/${uname}/${acct}.${epoch}.apache && exit ; bash"
+		scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.nginx ${acct}.${epoch}.nginx && scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.apache ${acct}.${epoch}.apache
+		echo -e "\nDescription: Displays requests that had highest occurrences of the ${err} HTTP Status in ${acct}'s logs. Request counts are to the left of the requests below."
+		for nglog in ${acct}.${epoch}.nginx
+			do echo -e ${br}${nglog}"\n"
+				awk -F\| -v code=${err} '{if ($5 ~ code) printf "IP: %s Code: %s Referrer: %s Request: %s\n",$3,$5,$7,$10}' ${nglog}| sort| uniq -c| sort -nk1| tail
+		done
+		for apachelog in ${acct}.${epoch}.apache
+			do echo -e ${br}${apachelog}"\n"
+				awk -v code=${err} '{if ($9 ~ code) printf "IP: %s Code: %s Referrer: %s Request: %s %s %s\n",$1,$9,$11,$6,$7,$8}' ${apachelog}| sort| uniq -c| sort -nk1| tail
+		done
+		echo -e ${br}
+		ssh -tq ${uname}@${acct}.wpengine.com "rm ${acct}.${epoch}.nginx ${acct}.${epoch}.apache && exit ; bash" && rm ${acct}.${epoch}.nginx ${acct}.${epoch}.apache
+		read -p "Would you like to try another code? ( X to exit ) " opt
+		if [[ ${opt} = [xX] ]]; then
+			echo && exit 0
+		else
+			err=${opt}
+			www-codes
+		fi
+	fi
+done
+echo && read -p "Looks like you entered the wrong code, try again? ( X to exit ) " err
+	if [[ ${err} != [xX] ]]; then
+		www-codes
+	else
+		echo && exit 0
+	fi
 }
 #---------------------------------------------------------------------------------------------#
 
@@ -244,7 +258,7 @@ function login {
 		if [[ -n ${four} ]]; then
 		echo -e ${br}"Alright, Logging into the ${envir} and going to ${four}\n"
 			ssh -tq ${uname}@${acct}.wpengine.com " if [[ -d /nas/wp/www/${envir}/${acct} ]]
-			then cd /nas/wp/www/${envir}/${acct}/${four}
+			then cd /nas/wp/www/${envir}/${acct} && cd ${four}
 			else
 			echo -e \"The Account, \033[1;31m"${acct}"\033[1;000m, no longer has a Site Directory, exiting.\"
 			exit
@@ -351,7 +365,7 @@ function duplicity {
 					ssh -tq ${uname}@${acct}.wpengine.com "sudo mv -f ${acct} /nas/wp/www/sites/${acct}/_wpeprivate/ && exit ; bash"
 				fi
 		elif [[ -z ${option} ]]; then
-			echo "\nAlright, dropping you in the folder, have fun.\n"
+			echo -e "\nAlright, dropping you in the folder, have fun.\n"
 			ssh -tq ${uname}@${acct}.wpengine.com
 		fi
 	echo -e ${br}
