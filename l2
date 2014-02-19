@@ -1,6 +1,7 @@
 #!/bin/bash
 #Author: BMO and JM
-#Version: 0.3.2
+#Version: 0.3.3
+# 0.3.3 -- Added NGINX options to "slog" and "slogchk" functions -BMO 2/19/14
 # 0.3.2 -- Added a condition check to the "www-codes" function -BMO 2/14/14
 # 0.3.1 -- More dynamic "cd to" options when logging in -BMO 2/13/14
 # 0.3.1 -- Bug in the transition from slog to slogchk where the account name has numbers fixed -BMO 2/13/14
@@ -418,6 +419,7 @@ done | sort -nk1 | tail
 exit"
 echo -e "\n${br}"
  read -p "Which Account's log would you like to check? X to quit - " a
+ echo
  if [[ ${a} = [Xx] ]]; then
  	exit
  else
