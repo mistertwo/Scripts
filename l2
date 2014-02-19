@@ -17,7 +17,6 @@
 
 
 
-
 #################### FUNCTIONS ####################
 #---------------------------------------------------------------------------------------------#
 ## www-codes => Description: Grab occurrences of a certain HTTP code in an account's logs.
@@ -31,8 +30,15 @@ else
 	fi
 fi
 array=( 200 301 302 304 400 403 404 500 501 502 503 504 507 )
+#singlearray=( 2 3 4 5 )
+#if [[ ${err} = ${singlearray[*]} ]]; then
+#	err="${err}0*"
+#fi
 for i in ${array[*]}; do
 	if [[ ${i} = ${err} ]]; then
+		#if [[ ${err} = [0-9][0-9]\* ]]; then
+		#	err=$(awk '{print $1, $2, "[0-9]"}' ${err})
+		#fi
 		ssh -tq ${uname}@${acct}.wpengine.com "sudo cat /var/log/nginx/${acct}.access.log > /home/${uname}/${acct}.${epoch}.nginx && sudo cat /var/log/apache2/${acct}.access.log > /home/${uname}/${acct}.${epoch}.apache && exit ; bash"
 		scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.nginx ${acct}.${epoch}.nginx && scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.apache ${acct}.${epoch}.apache
 		echo -e "\nDescription: Displays requests that had highest occurrences of the ${err} HTTP Status in ${acct}'s logs. Request counts are to the left of the requests below."
@@ -401,12 +407,16 @@ if (( ${min} <= 14 )); then
 	acct=${pod}
  fi
 ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
-echo -e \"\\\n${sshbr}Apache log counts for ${hhmm}:\\\n\\\nHits - Account\"
+echo -e \"\\\n${sshbr}\033[1;31m\"NGINX\"\033[1;000m log counts for ${hhmm}:\\\n\\\nHits - Account\"
+for log in \$(sudo find /var/log/nginx/ -maxdepth 1 -type f ! -name *staging* ! -name *gz ! -name *1)
+do echo \$(sudo grep -E \"${hhmm}\" \${log} | wc -l) - \$(echo \${log} | awk -F'/' '{print \$5}' | awk -F'.' '{print \$1}') | grep -v ^0
+done | sort -nk1 | tail
+echo -e \"\\\n${sshbr}\033[1;31m\"Apache\"\033[1;000m log counts for ${hhmm}:\\\n\\\nHits - Account\"
 for log in \$(sudo find /var/log/apache2/ -maxdepth 1 -type f ! -name *staging* ! -name *gz ! -name *1)
 do echo \$(sudo grep -E \"${hhmm}\" \${log} | wc -l) - \$(echo \${log} | awk -F'/' '{print \$5}' | awk -F'.' '{print \$1}') | grep -v ^0
 done | sort -nk1 | tail
 exit"
-echo -e ${br}
+echo -e "\n${br}"
  read -p "Which Account's log would you like to check? X to quit - " a
  if [[ ${a} = [Xx] ]]; then
  	exit
@@ -440,16 +450,29 @@ if (( ${min} <= 14 )); then
  elif (( ${min} > 44 )) && (( ${min} <= 59 )); then
  	hhmm="${year}:${hour}:(4[5-9]|5[0-9])"
  fi
-hlog="/var/log/apache2/${acct}.access.log" 
+alog="/var/log/apache2/${acct}.access.log"
+nlog="/var/log/nginx/${acct}.access.log" 
 ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
-echo -e \"\\\n${sshbr}Most frequent requests\\\n\"
-while read line
-do awk '{print \$1,\$4\"]\",\$5,\$6,\$7,\$8}'
-done < <(sudo grep -E \"${hhmm}\" ${hlog})| grep -oP '(?<=\\\").*(?=\\\")' | sort | uniq -c | sort -nk1 | tail -5
-echo -e \"\\\n${sshbr}Most frequent IP's\\\n\"
-while read line
-do awk '{print \$1}' | sort | uniq -c | sort -nk1 | tail -5
-done < <(sudo grep -E \"${hhmm}\" ${hlog})
+	echo -e \"\\\n\033[1;31m\"NGINX:\"\033[1;000m\\\n${sshbr}Most frequent requests\\\n\"
+		while read line
+			do awk -F\"|\" '{print \$10}' | awk '{print \$2}'
+		done < <(sudo grep -E \"${hhmm}\" ${nlog})| sort | uniq -c | sort -nk1 | tail -5
+	echo -e \"\\\n${sshbr}Most frequent IP's\\\n\"
+		while read line
+			do awk -F\"|\" '{print \$3}' | sort | uniq -c | sort -nk1 | tail -5
+		done < <(sudo grep -E \"${hhmm}\" ${nlog})
+	echo -e \"\\\n${sshbr}Last 20 Hits to Log\\\n\"
+		sudo tail -n 20 ${nlog}
+	echo -e \"\\\n\033[1;31m\"APACHE:\"\033[1;000m\\\n${sshbr}Most frequent requests\\\n\"
+		while read line
+			do awk '{print \$1,\$4\"]\",\$5,\$6,\$7,\$8}'
+		done < <(sudo grep -E \"${hhmm}\" ${alog})| grep -oP '(?<=\\\").*(?=\\\")' | sort | uniq -c | sort -nk1 | tail -5
+	echo -e \"\\\n${sshbr}Most frequent IP's\\\n\"
+		while read line
+			do awk '{print \$1}' | sort | uniq -c | sort -nk1 | tail -5
+		done < <(sudo grep -E \"${hhmm}\" ${alog})
+	echo -e \"\\\n${sshbr}Last 20 Hits to Log\\\n\"
+		sudo tail -n 20 ${alog}
 exit"
 echo -e "\n${br}"
 }

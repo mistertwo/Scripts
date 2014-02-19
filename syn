@@ -5,18 +5,18 @@
 
 #Start Synergy
 function syn-start { 
-	synergys -a 10.10.64.16 &
+	synergyc -f othello &
 }
 
 #Kill Synergy
 function syn-kill {
-	pkill synergys
+	pkill synergyc
 }
 
 #Kill and then Start Synergy
 function syn-restart {
-	pkill synergys
-	synergys -a 10.10.64.16 &
+	pkill synergyc
+	synergyc -f othello &
 }
 
 #Run it
