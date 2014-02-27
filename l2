@@ -1,7 +1,8 @@
 #!/bin/bash
 #Author: BMO and JM
-#Version: 0.3.4
-# 0.3.4 -- Fixed check for pod number on "htop" function - BMO 2/20s
+#Version: 0.3.5
+# 0.3.5 -- Fixed a typo in the nginx-conf function - BMO 2/27
+# 0.3.4 -- Fixed check for pod number on "htop" function - BMO 2/20
 # 0.3.3 -- Added NGINX options to "slog" and "slogchk" functions -BMO 2/19/14
 # 0.3.2 -- Added a condition check to the "www-codes" function -BMO 2/14/14
 # 0.3.1 -- More dynamic "cd to" options when logging in -BMO 2/13/14
@@ -13,8 +14,6 @@
 # 0.3.1 -- Added the "htop" function -BMO 2/13/14
 # 0.3.0 -- Fixed the "Pod" check in login. - BMO 2/12/14
 # 0.3.0 -- Yay, 0.3!
-# 0.2.9 -- Added an Exit condition to the Login Function - BMO 2/10/14
-# 0.2.9 -- Added Get and Put File functions - BMO 2/10/14
 
 
 
@@ -47,11 +46,11 @@ for i in ${array[*]}; do
 		for nglog in ${acct}.${epoch}.nginx
 			do echo -e ${br}${nglog}"\n"
 				awk -F\| -v code=${err} '{if ($5 ~ code) printf "IP: %s Code: %s Referrer: %s Request: %s\n",$3,$5,$7,$10}' ${nglog}| sort| uniq -c| sort -nk1| tail
-		done
+			done
 		for apachelog in ${acct}.${epoch}.apache
 			do echo -e ${br}${apachelog}"\n"
 				awk -v code=${err} '{if ($9 ~ code) printf "IP: %s Code: %s Referrer: %s Request: %s %s %s\n",$1,$9,$11,$6,$7,$8}' ${apachelog}| sort| uniq -c| sort -nk1| tail
-		done
+			done
 		echo -e ${br}
 		ssh -tq ${uname}@${acct}.wpengine.com "rm ${acct}.${epoch}.nginx ${acct}.${epoch}.apache && exit ; bash" && rm ${acct}.${epoch}.nginx ${acct}.${epoch}.apache
 		read -p "Would you like to try another code? ( X to exit ) " opt
@@ -63,7 +62,7 @@ for i in ${array[*]}; do
 		fi
 	fi
 done
-echo && read -p "Looks like you entered the wrong code, try again? ( X to exit ) " err
+	echo && read -p "Looks like you entered the wrong code, try again? ( X to exit ) " err
 	if [[ ${err} != [xX] ]]; then
 		www-codes
 	else
@@ -80,8 +79,8 @@ if [[ -z ${three} ]]; then
 else
 	file=${three}
 fi
-echo -e "\nDescription: Touches a file and sets proper permissions to mitigate 404 errors. Try using www-codes first to find 404 errors in an account."
-echo ${sp}| ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/sites/${acct} && [[ -f ${file} ]] || touch ./${file} && sudo /nas/wp/admin fixperms ${acct} && exit ; bash"
+	echo -e "\nDescription: Touches a file and sets proper permissions to mitigate 404 errors. Try using www-codes first to find 404 errors in an account."
+	echo ${sp}| ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/sites/${acct} && [[ -f ${file} ]] || touch ./${file} && sudo /nas/wp/admin fixperms ${acct} && exit ; bash"
 }
 #---------------------------------------------------------------------------------------------#
 
@@ -96,13 +95,13 @@ fi
 ssh -tq ${uname}@${acct}.wpengine.com "sudo /nas/wp/ec2/cluster parent-child ${acct} > /home/${uname}/result.${epoch}.txt && hostname | cut -d- -f2 > /home/${uname}/host.${epoch}.txt && exit ; bash"
 scp -q ${uname}@${acct}.wpengine.com:/home/${uname}/result.${epoch}.txt result.${epoch}.txt && scp -q ${uname}@${acct}.wpengine.com:/home/${uname}/host.${epoch}.txt host.${epoch}.txt
 curpod=$(cat host.${epoch}.txt)
-echo -e "\nDescription: Output lines to migrate every account associated with another account, including parent and children."
-echo -e ${br}
-echo -e $(cat result.${epoch}.txt | sed 's/ /\\n/g') | 
+	echo -e "\nDescription: Output lines to migrate every account associated with another account, including parent and children."
+	echo -e ${br}
+	echo -e $(cat result.${epoch}.txt | sed 's/ /\\n/g') | 
 while read
-do echo -e "sudo /nas/wp/ec2/cluster move-to-preferred-cluster ${curpod} ${REPLY} ${destpod}"
+	do echo -e "sudo /nas/wp/ec2/cluster move-to-preferred-cluster ${curpod} ${REPLY} ${destpod}"
 done
-echo -e "\n${br}"
+	echo -e "\n${br}"
 ssh -tq ${uname}@${acct}.wpengine.com "rm result.${epoch}.txt host.${epoch}.txt && exit ; bash" && rm result.${epoch}.txt host.${epoch}.txt
 }
 #---------------------------------------------------------------------------------------------#
@@ -111,12 +110,12 @@ ssh -tq ${uname}@${acct}.wpengine.com "rm result.${epoch}.txt host.${epoch}.txt 
 # Usage L2 ng-logs <account>
 function ng-logs { 
 ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
-echo -e \"\\\nDescription: Nginx log entries below are sorted by Page Load Time (8th | delimited column).\"
-echo -e \"\\\n${sshbr}Slow requests that did NOT receive a 200 OK HTTP Status Code.\\\n\"
-sudo cat /var/log/nginx/${acct}.access.log | awk '!/\|200\|/'| sort -t\| -rnk8| head
-echo -e \"\\\n${sshbr}Slow requests that received 200 OK HTTP Status Code.\\\n\"
-sudo cat /var/log/nginx/${acct}.access.log | awk '/\|200\|/' | sort -t\| -rnk8| head
-echo -e \"${sshbr}\"
+	echo -e \"\\\nDescription: Nginx log entries below are sorted by Page Load Time (8th | delimited column).\"
+	echo -e \"\\\n${sshbr}Slow requests that did NOT receive a 200 OK HTTP Status Code.\\\n\"
+		sudo cat /var/log/nginx/${acct}.access.log | awk '!/\|200\|/'| sort -t\| -rnk8| head
+	echo -e \"\\\n${sshbr}Slow requests that received 200 OK HTTP Status Code.\\\n\"
+		sudo cat /var/log/nginx/${acct}.access.log | awk '/\|200\|/' | sort -t\| -rnk8| head
+	echo -e \"${sshbr}\"
 exit"
 read -p "Check for slow SQL information? Y or N - " answer
 if [[ ${answer} = [yY]* ]]; then
@@ -132,18 +131,18 @@ pod
 if [[ -n ${pod} ]]; then
 	acct=${pod}
 fi 
-echo -e "\nDescription: Display problematic MySQL information. (DO NOT PASTE THIS COMPLETE OUTPUT TO A CUSTOMER)\n"
+	echo -e "\nDescription: Display problematic MySQL information. (DO NOT PASTE THIS COMPLETE OUTPUT TO A CUSTOMER)\n"
 ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
-echo -e \"\\n\"${sshbr}\"Show MySQL users that hit the slow query log the most.\\n\"
-sudo awk '/User@Host/ {print \$3}' /var/log/mysql/mysql-slow.log| cut -d\[ -f1| sort| uniq -c| sort -nk1| tail -10
-echo -e ${sshbr}\"Count of which PHP lines that created slow queries: \\n\"
-sudo grep -oP '(?<=\[\/nas\/wp\/www\/cluster\-).*(?=\])' /var/log/mysql/mysql-slow.log| sort| uniq -c| sort -nk1| tail -10
-echo -e ${sshbr}\"Heavy SQL Tables based on table size vs. table rows: \\n\"
-sudo mysql -e \"select concat(table_schema, '.', table_name), concat(round(table_rows / 1000000, 2), 'M') rows, concat(round(data_length / ( 1024 * 1024 * 1024 ), 2), 'G') DATA, concat(round(index_length / ( 1024 * 1024 * 1024 ), 2), 'G') idx, concat(round(( data_length + index_length ) / ( 1024 * 1024 * 1024 ), 2), 'G') total_size, round(index_length / data_length, 2) idxfrac from information_schema.TABLES ORDER by data_length + index_length DESC limit 10;\"
-echo -e ${sshbr}
+	echo -e \"\\n\"${sshbr}\"Show MySQL users that hit the slow query log the most.\\n\"
+		sudo awk '/User@Host/ {print \$3}' /var/log/mysql/mysql-slow.log| cut -d\[ -f1| sort| uniq -c| sort -nk1| tail -10
+	echo -e ${sshbr}\"Count of which PHP lines that created slow queries: \\n\"
+		sudo grep -oP '(?<=\[\/nas\/wp\/www\/cluster\-).*(?=\])' /var/log/mysql/mysql-slow.log| sort| uniq -c| sort -nk1| tail -10
+	echo -e ${sshbr}\"Heavy SQL Tables based on table size vs. table rows: \\n\"
+		sudo mysql -e \"select concat(table_schema, '.', table_name), concat(round(table_rows / 1000000, 2), 'M') rows, concat(round(data_length / ( 1024 * 1024 * 1024 ), 2), 'G') DATA, concat(round(index_length / ( 1024 * 1024 * 1024 ), 2), 'G') idx, concat(round(( data_length + index_length ) / ( 1024 * 1024 * 1024 ), 2), 'G') total_size, round(index_length / data_length, 2) idxfrac from information_schema.TABLES ORDER by data_length + index_length DESC limit 10;\"
+	echo -e ${sshbr}
 exit"
 if [[ ${acct} != pod-[0-9]* ]]; then
-sql-heavy-rows
+	sql-heavy-rows
 fi
 }
 #---------------------------------------------------------------------------------------------#
@@ -152,10 +151,10 @@ fi
 #Usage l2 sql-heavey-rows <account>
 function sql-heavy-rows {
 ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
-echo -e \"\\nTables which have over 5000 rows.\\n${sshbr}Account: ${acct}\nDatabase: wp_${acct}\\n${sshbr}\"
-cd /nas/wp/www/sites/${acct} && sudo mysql wp_${acct} -e 'show table status where rows > 5000;'| awk '{print \$1,\$5 }'| sort -nk2| column -t
+	echo -e \"\\nTables which have over 5000 rows.\\n${sshbr}Account: ${acct}\nDatabase: wp_${acct}\\n${sshbr}\"
+		cd /nas/wp/www/sites/${acct} && sudo mysql wp_${acct} -e 'show table status where rows > 5000;'| awk '{print \$1,\$5 }'| sort -nk2| column -t
 exit"
-echo -e ${br}
+	echo -e ${br}
 }
 #---------------------------------------------------------------------------------------------#
 
@@ -172,20 +171,20 @@ if [[ -n ${pod} ]]; then
 	acct=${pod}
 fi
 ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
-echo -e \"\\\n${sshbr}Description: Show UTC times when load was over 1.5x the number of processor cores for this server.\"
-if [[ ! -f /var/log/sysstat/sa${day} ]]
-then echo -e \"\\\nInfo for ${day} does not exist, please try again.\"
-else sudo sar -q -f /var/log/sysstat/sa${day}| awk -vcpu=\$(grep ^processor /proc/cpuinfo| wc -l) '{if (\$5 > (1.5 * cpu)) print}'
-fi
+	echo -e \"\\\n${sshbr}Description: Show UTC times when load was over 1.5x the number of processor cores for this server.\"
+		if [[ ! -f /var/log/sysstat/sa${day} ]]
+			then echo -e \"\\\nInfo for ${day} does not exist, please try again.\"
+		else sudo sar -q -f /var/log/sysstat/sa${day}| awk -vcpu=\$(grep ^processor /proc/cpuinfo| wc -l) '{if (\$5 > (1.5 * cpu)) print}'
+		fi
 exit"
-echo -e "\n${br}"
+	echo -e "\n${br}"
 if [[ ${day} = `date +%d` ]]; then
-read -p "Run \"slog\" for a certain time? HH:MM or X - " a
-echo
-if [[ ${a} = [0-9][0-9]:[0-9][0-9] ]]; then
-	three=${a}
-	slog
-fi
+	read -p "Run \"slog\" for a certain time? HH:MM or X - " a
+		echo
+			if [[ ${a} = [0-9][0-9]:[0-9][0-9] ]]; then
+				three=${a}
+				slog
+			fi
 else
 	exit 0
 fi
@@ -196,12 +195,12 @@ fi
 #Usage l2 wp-plugins <account>
 function wp-plugins {
 ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
-pf=\$(sudo grep \"table_prefix\" /nas/wp/www/sites/${acct}/wp-config.php | awk 'tolower(\$0) ~ /^\\\$table_prefix/ {gsub(/\"|;|'\"'\"'/,\"\"); print \$3}')
-db=wp_${acct}
-echo -e \"\\\n\"${sshbr}\"Enabled plugins for account \"${acct}\": \\\n\"
-sudo mysql \${db} -e \"select * from \${pf}options where option_name='active_plugins';\"| tr '\"' '\n'| awk -F\/ '/^[a-zA-Z]/ {print \$1}'| sed 1d
+	pf=\$(sudo grep \"table_prefix\" /nas/wp/www/sites/${acct}/wp-config.php | awk 'tolower(\$0) ~ /^\\\$table_prefix/ {gsub(/\"|;|'\"'\"'/,\"\"); print \$3}')
+	db=wp_${acct}
+		echo -e \"\\\n\"${sshbr}\"Enabled plugins for account \"${acct}\": \\\n\"
+			sudo mysql \${db} -e \"select * from \${pf}options where option_name='active_plugins';\"| tr '\"' '\n'| awk -F\/ '/^[a-zA-Z]/ {print \$1}'| sed 1d
 exit"
-echo -e ${br}
+	echo -e ${br}
 }
 #---------------------------------------------------------------------------------------------#
 
@@ -212,9 +211,9 @@ if [[ -z ${three} ]]; then
 	read -p "Which Day (must be in 2 digit format)? " day
 	read -p "Which Month (must be in 3 character format, ie. 'Jan')? " mon
 elif [[ ${three} != [0-9][0-9] ]]; then
-	echo -e "\nLooks like you got it wrong!\nUsage - l2 uptime <account> <two-digit-day> <three-digit-month> (IE: l2 uptime ${acct} 12 dec)\nlets try again.\n"
-	read -p "Which Day (must be in 2 digit format)? " day
-    read -p "Which Month (must be in 3 character format, ie. 'Jan')? " mon
+		echo -e "\nLooks like you got it wrong!\nUsage - l2 uptime <account> <two-digit-day> <three-digit-month> (IE: l2 uptime ${acct} 12 dec)\nlets try again.\n"
+			read -p "Which Day (must be in 2 digit format)? " day
+    		read -p "Which Month (must be in 3 character format, ie. 'Jan')? " mon
 else
 day=${three}
 mon=${four}
@@ -228,22 +227,22 @@ ssh -tq ${uname}@${acct}.wpengine.com "sudo zgrep -Ei ${day}\"/\"${mon} ${log} |
      sudo zgrep -Ei ${day}\"/\"${mon} ${log}.5.gz | awk '{gsub(/\[|/,\"\"); print \$4}'| sed 's/:[0-9][0-9]$//g'| sort| uniq| sed 's/:[0-9][0-9]$//g'| uniq -c >> /home/${uname}/${acct}.${epoch}.access.log
      exit ; bash"
 scp -q ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.access.log ${acct}.${epoch}.access.log
-echo -e "\nCurrent date is "$(date)"\n${br}"
-cat ${acct}.${epoch}.access.log | while read line; do awk -v account=${acct} '{printf "Log hits on %s/60 possible minutes during the %s:00-59 time period for "account".\n",$1,$2}'
-echo -e ${br}
+	echo -e "\nCurrent date is "$(date)"\n${br}"
+		cat ${acct}.${epoch}.access.log | while read line; do awk -v account=${acct} '{printf "Log hits on %s/60 possible minutes during the %s:00-59 time period for "account".\n",$1,$2}'
+	echo -e ${br}
 done
 ssh -tq ${uname}@${acct}.wpengine.com "rm ${acct}.${epoch}.access.log && exit ; bash" && rm ${acct}.${epoch}.access.log
 }
 #---------------------------------------------------------------------------------------------#
 
-## nginx-confg =>  Description: Open the accounts NGINX Config file with less.
+## nginx-conf =>  Description: Open the accounts NGINX Config file with less.
 #Usage: l2 nginx-conf <account>
-function nginx-config {
-	ssh -tq ${uname}@${acct}.wpengine.com "if [[ ! -f /nas/wp/conf/lb/sites/${acct}.conf ]]
+function nginx-conf {
+ssh -tq ${uname}@${acct}.wpengine.com "if [[ ! -f /nas/wp/conf/lb/sites/${acct}.conf ]]
 	then echo -e \"\\\nNo File, maybe you typed the account wrong?\"
-	exit
+		exit
     else
-    less /nas/wp/conf/lb/sites/${acct}.conf
+    	less /nas/wp/conf/lb/sites/${acct}.conf
     exit
 	fi"
 }
@@ -266,18 +265,18 @@ function login {
 		if [[ -n ${four} ]]; then
 		echo -e ${br}"Alright, Logging into the ${envir} and going to ${four}\n"
 			ssh -tq ${uname}@${acct}.wpengine.com " if [[ -d /nas/wp/www/${envir}/${acct} ]]
-			then cd /nas/wp/www/${envir}/${acct} && cd ${four}
+				then cd /nas/wp/www/${envir}/${acct} && cd ${four}
 			else
-			echo -e \"The Account, \033[1;31m"${acct}"\033[1;000m, no longer has a Site Directory, exiting.\"
-			exit
+				echo -e \"The Account, \033[1;31m"${acct}"\033[1;000m, no longer has a Site Directory, exiting.\"
+					exit
 			fi; bash"
 		else
 		echo -e ${br}"Alright, logging into the ${envir} Server\n"
 			ssh -tq ${uname}@${acct}.wpengine.com "if [[ -d /nas/wp/www/${envir}/${acct} ]]
-			then cd /nas/wp/www/${envir}/${acct}
+				then cd /nas/wp/www/${envir}/${acct}
 			else
-			echo -e \"The Account, \033[1;31m"${acct}"\033[1;000m, no longer has a Site Directory, exiting.\"
-			exit
+				echo -e \"The Account, \033[1;31m"${acct}"\033[1;000m, no longer has a Site Directory, exiting.\"
+					exit
 		    fi; bash"
 		fi
 	fi
@@ -309,8 +308,8 @@ function find {
 		awk -F':' '{print $1}' ack.${epoch} > find.${epoch}
 		awk -F':' '{print $2}' ack.${epoch} > line.${epoch}
 	fi
-	echo -e ${br}
-	read -p "Which File would you like to Open? Pick a number. " num
+		echo -e ${br}
+			read -p "Which File would you like to Open? Pick a number. " num
 		while [[ ${num} = [0-9]* ]]; do
 			pick=$(sed -n "${num}"p find.${epoch})
 			if [[ ${which} != f* ]]; then
@@ -324,7 +323,7 @@ function find {
 				nl find.${epoch}
 			fi
 		echo -e ${br}
-		read -p "Would you like to open another? Press X to finish " num
+			read -p "Would you like to open another? Press X to finish " num
 		done
 	ssh -tq ${uname}@${acct}.wpengine.com "rm -f find.${epoch} ack.${epoch}; exit" && rm -f find.${epoch} ack.${epoch} line.${epoch}
 }
