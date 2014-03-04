@@ -1,0 +1,484 @@
+#!/bin/bash
+#Author: BMO and JM
+#Version: 0.0.1
+
+#################### FUNCTIONS ####################
+#---------------------------------------------------------------------------------------------#
+## www-codes => Description: Grab occurrences of a certain HTTP code in an account's logs.
+#Usage l2 www-codes <account> <error code>
+function www-codes {
+if [[ -z ${three} ]] && [[ -z ${err} ]]; then
+	read -p "What HTTP Code would you like to search for? " err
+else
+	if [[ -z ${err} ]]; then
+		err=${three}
+	fi
+fi
+array=( 200 301 302 304 400 403 404 500 501 502 503 504 507 )
+for i in ${array[*]}; do
+	if [[ ${i} = ${err} ]]; then
+		ssh -tq ${uname}@${acct}.wpengine.com "sudo cat /var/log/nginx/${acct}.access.log > /home/${uname}/${acct}.${epoch}.nginx && sudo cat /var/log/apache2/${acct}.access.log > /home/${uname}/${acct}.${epoch}.apache && exit ; bash"
+		scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.nginx ${acct}.${epoch}.nginx && scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.apache ${acct}.${epoch}.apache
+		echo -e "\nDescription: Displays requests that had highest occurrences of the ${err} HTTP Status in ${acct}'s logs. Request counts are to the left of the requests below."
+		for nglog in ${acct}.${epoch}.nginx
+			do echo -e ${br}${nglog}"\n"
+				awk -F\| -v code=${err} '{if ($5 ~ code) printf "IP: %s Code: %s Referrer: %s Request: %s\n",$3,$5,$7,$10}' ${nglog}| sort| uniq -c| sort -nk1| tail
+			done
+		for apachelog in ${acct}.${epoch}.apache
+			do echo -e ${br}${apachelog}"\n"
+				awk -v code=${err} '{if ($9 ~ code) printf "IP: %s Code: %s Referrer: %s Request: %s %s %s\n",$1,$9,$11,$6,$7,$8}' ${apachelog}| sort| uniq -c| sort -nk1| tail
+			done
+		echo -e ${br}
+		ssh -tq ${uname}@${acct}.wpengine.com "rm ${acct}.${epoch}.nginx ${acct}.${epoch}.apache && exit ; bash" && rm ${acct}.${epoch}.nginx ${acct}.${epoch}.apache
+		read -p "Would you like to try another code? ( X to exit ) " opt
+		if [[ ${opt} = [xX] ]]; then
+			echo && exit 0
+		else
+			err=${opt}
+			www-codes
+		fi
+	fi
+done
+	echo && read -p "Looks like you entered the wrong code, try again? ( X to exit ) " err
+	if [[ ${err} != [xX] ]]; then
+		www-codes
+	else
+		echo && exit 0
+	fi
+}
+#---------------------------------------------------------------------------------------------#
+
+## ng-logs => Description: Show log hits from nginx that took the longest time to complete.
+# Usage L2 ng-logs <account>
+function ng-logs { 
+ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
+	echo -e \"\\\nDescription: Nginx log entries below are sorted by Page Load Time (8th | delimited column).\"
+	echo -e \"\\\n${sshbr}Slow requests that did NOT receive a 200 OK HTTP Status Code.\\\n\"
+		sudo cat /var/log/nginx/${acct}.access.log | awk '!/\|200\|/'| sort -t\| -rnk8| head
+	echo -e \"\\\n${sshbr}Slow requests that received 200 OK HTTP Status Code.\\\n\"
+		sudo cat /var/log/nginx/${acct}.access.log | awk '/\|200\|/' | sort -t\| -rnk8| head
+	echo -e \"${sshbr}\"
+exit"
+read -p "Check for slow SQL information? Y or N - " answer
+if [[ ${answer} = [yY]* ]]; then
+	sql-slow
+fi
+}
+#---------------------------------------------------------------------------------------------#
+
+## sql-slow => Description: Show problematic sql information.(DO NOT PASTE THIS COMPLETE OUTPUT TO A CUSTOMER)
+#usage l2 sql-slow <account>
+function sql-slow {
+pod
+if [[ -n ${pod} ]]; then
+	acct=${pod}
+fi 
+	echo -e "\nDescription: Display problematic MySQL information. (DO NOT PASTE THIS COMPLETE OUTPUT TO A CUSTOMER)\n"
+ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
+	echo -e \"\\n\"${sshbr}\"Show MySQL users that hit the slow query log the most.\\n\"
+		sudo awk '/User@Host/ {print \$3}' /var/log/mysql/mysql-slow.log| cut -d\[ -f1| sort| uniq -c| sort -nk1| tail -10
+	echo -e ${sshbr}\"Count of which PHP lines that created slow queries: \\n\"
+		sudo grep -oP '(?<=\[\/nas\/wp\/www\/cluster\-).*(?=\])' /var/log/mysql/mysql-slow.log| sort| uniq -c| sort -nk1| tail -10
+	echo -e ${sshbr}
+exit"
+if [[ ${acct} != pod-[0-9]* ]]; then
+	sql-heavy-rows
+fi
+}
+#---------------------------------------------------------------------------------------------#
+
+## hiload => Description: Show load that was 1.5x the number of processer cores.
+# Usage l2 hiload <account> <DD>
+function hiload { 
+if [[ -z ${three} ]]; then
+	day=$(date +%d)
+else
+	day=${three}
+fi
+pod
+if [[ -n ${pod} ]]; then
+	acct=${pod}
+fi
+ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
+	echo -e \"\\\n${sshbr}Description: Show UTC times when load was over 1.5x the number of processor cores for this server.\"
+		if [[ ! -f /var/log/sysstat/sa${day} ]]
+			then echo -e \"\\\nInfo for ${day} does not exist, please try again.\"
+		else sudo sar -q -f /var/log/sysstat/sa${day}| awk -vcpu=\$(grep ^processor /proc/cpuinfo| wc -l) '{if (\$5 > (1.5 * cpu)) print}'
+		fi
+exit"
+	echo -e "\n${br}"
+if [[ ${day} = `date +%d` ]]; then
+	read -p "Run \"slog\" for a certain time? HH:MM or X - " a
+		echo
+			if [[ ${a} = [0-9][0-9]:[0-9][0-9] ]]; then
+				three=${a}
+				slog
+			fi
+else
+	exit 0
+fi
+}
+#---------------------------------------------------------------------------------------------#
+
+## nginx-conf =>  Description: Open the accounts NGINX Config file with less.
+#Usage: l2 nginx-conf <account>
+function nginx-conf {
+ssh -tq ${uname}@${acct}.wpengine.com "if [[ ! -f /nas/wp/conf/lb/sites/${acct}.conf ]]
+	then echo -e \"\\\nNo File, maybe you typed the account wrong?\"
+		exit
+    else
+    	less /nas/wp/conf/lb/sites/${acct}.conf
+    exit
+	fi"
+}
+#---------------------------------------------------------------------------------------------#
+
+## login =>  Description: Login to an Account via SSH (location optional)
+# Usage l2 login <account> <environment> <location>
+function login {
+	pod
+	if [[ -n ${pod} ]]; then
+		if [[ -n ${three} ]]; then
+		echo -e ${br}"Alright, Logging into ${pod} and going to ${three}.\n"
+			ssh -tq ${uname}@${pod}.wpengine.com "cd ${three}; bash"
+		else
+		echo -e ${br}"Alright, logging into ${pod}.\n"
+			ssh -tq ${uname}@${pod}.wpengine.com
+		fi
+	else
+		envir
+		if [[ -n ${four} ]]; then
+		echo -e ${br}"Alright, Logging into the ${envir} and going to ${four}\n"
+			ssh -tq ${uname}@${acct}.wpengine.com " if [[ -d /nas/wp/www/${envir}/${acct} ]]
+				then cd /nas/wp/www/${envir}/${acct} && cd ${four}
+			else
+				echo -e \"The Account, \033[1;31m"${acct}"\033[1;000m, no longer has a Site Directory, exiting.\"
+					exit
+			fi; bash"
+		else
+		echo -e ${br}"Alright, logging into the ${envir} Server\n"
+			ssh -tq ${uname}@${acct}.wpengine.com "if [[ -d /nas/wp/www/${envir}/${acct} ]]
+				then cd /nas/wp/www/${envir}/${acct}
+			else
+				echo -e \"The Account, \033[1;31m"${acct}"\033[1;000m, no longer has a Site Directory, exiting.\"
+					exit
+		    fi; bash"
+		fi
+	fi
+	echo
+}
+#---------------------------------------------------------------------------------------------#
+
+## find => Description: Find either a File or a String of Text in the account.
+# Usage: l2 find <account> <envir> "<file/text>"
+function find {
+	envir
+	if [[ -n ${four} ]]; then
+		search=${four}
+	elif [[ -z ${four} ]]; then
+		echo -e ${br}
+		read -p "What are you looking for? " search
+		echo
+	fi
+	read -p "Is this a File or a String that you are looking for? " which
+	echo -e "\n"${br}
+	if [[ ${which} = f* ]]; then
+		ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct}/ && find . -type f -iname \"*${search}*\" ! -path \"./wp-admin/*\" ! -path \"./wp-includes/*\" > /home/${uname}/find.${epoch} && exit ; bash"
+		scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/find.${epoch} find.${epoch}
+		nl find.${epoch}
+	else
+		ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct} && sudo grep -irn --exclude=*.{sql,png,pdf,csv,jpeg,jpg,gif,zip,tar,tar.gz} --exclude-dir=wp-includes --exclude-dir=wp-admin -e \"${search}\" * > /home/${uname}/ack.${epoch}; exit"
+		scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/ack.${epoch} ack.${epoch}
+		nl ack.${epoch}
+		awk -F':' '{print $1}' ack.${epoch} > find.${epoch}
+		awk -F':' '{print $2}' ack.${epoch} > line.${epoch}
+	fi
+		echo -e ${br}
+			read -p "Which File would you like to Open? Pick a number. " num
+		while [[ ${num} = [0-9]* ]]; do
+			pick=$(sed -n "${num}"p find.${epoch})
+			if [[ ${which} != f* ]]; then
+				pickline=$(sed -n "${num}"p line.${epoch})
+				ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct} && sudo nano +${pickline} ${pick} && exit ; bash"
+					echo
+				nl ack.${epoch}
+			else
+				ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct} && sudo nano ${pick} && exit ; bash"
+					echo
+				nl find.${epoch}
+			fi
+		echo -e ${br}
+			read -p "Would you like to open another? Press X to finish " num
+		done
+	ssh -tq ${uname}@${acct}.wpengine.com "rm -f find.${epoch} ack.${epoch}; exit" && rm -f find.${epoch} ack.${epoch} line.${epoch}
+}
+#---------------------------------------------------------------------------------------------#
+
+## slog => Description: Count which Apache log had the most hits in a time range.
+# Usage: l2 slog <account> <HH:MM>
+# Example l2 slog wpengine 14:25
+function slog {
+	if [[ -z ${three} ]]; then
+		read -p "What Time (UTC) would you like to Check? HH:MM - " three
+	fi
+year=$(date +%Y)
+hour=$(echo ${three} | awk -F':' '{print $1}')
+min=$(echo ${three} | awk -F':' '{print $2}')
+if (( ${min} <= 14 )); then
+ 	hhmm="${year}:${hour}:(0[0-9]|1[0-4])"
+ elif (( ${min} > 14 )) && (( ${min} <= 29 )); then
+ 	hhmm="${year}:${hour}:(1[5-9]|2[0-9])"
+ elif (( ${min} > 29 )) && (( ${min} <= 44 )); then
+ 	hhmm="${year}:${hour}:(3[0-9]|4[0-4])"
+ elif (( ${min} > 44 )) && (( ${min} <= 59 )); then
+ 	hhmm="${year}:${hour}:(4[5-9]|5[0-9])"
+ fi
+ pod
+ if [[ -n ${pod} ]]; then
+	acct=${pod}
+ fi
+ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
+	echo -e \"\\\n${sshbr}\033[1;31m\"NGINX\"\033[1;000m log counts for ${hhmm}:\\\n\\\nHits - Account\"
+		for log in \$(sudo find /var/log/nginx/ -maxdepth 1 -type f ! -name *staging* ! -name *gz ! -name *1)
+			do echo \$(sudo grep -E \"${hhmm}\" \${log} | wc -l) - \$(echo \${log} | awk -F'/' '{print \$5}' | awk -F'.' '{print \$1}') | grep -v ^0
+		done | sort -nk1 | tail
+	echo -e \"\\\n${sshbr}\033[1;31m\"Apache\"\033[1;000m log counts for ${hhmm}:\\\n\\\nHits - Account\"
+		for log in \$(sudo find /var/log/apache2/ -maxdepth 1 -type f ! -name *staging* ! -name *gz ! -name *1)
+			do echo \$(sudo grep -E \"${hhmm}\" \${log} | wc -l) - \$(echo \${log} | awk -F'/' '{print \$5}' | awk -F'.' '{print \$1}') | grep -v ^0
+		done | sort -nk1 | tail
+	exit"
+echo -e "\n${br}"
+ read -p "Which Account's log would you like to check? X to quit - " a
+ echo
+ 	if [[ ${a} = [Xx] ]]; then
+ 		exit
+ 	else
+ 		while [[ ${a} = [a-zA-Z][a-zA-Z0-9]* ]]; do
+			acct=${a}
+			slogchk
+			read -p "Check Another Account? \"account name\" or X - " a
+		done
+ 	fi
+ }
+#---------------------------------------------------------------------------------------------#
+
+## slogchk => Description: Show heaviest requests and IP's in log after running "slog".
+# Usage: l2 slogchk <account> <HH:MM>
+# Example l2 slogchk wpengine 14:25
+function slogchk {
+year=$(date +%Y)
+	if [[ -z ${three} ]] && [[ -z ${hhmm} ]]; then
+		read -p "What Time (UTC) would you like to Check? HH:MM - " three
+	fi
+year=$(date +%Y)
+hour=$(echo ${three} | awk -F':' '{print $1}')
+min=$(echo ${three} | awk -F':' '{print $2}')
+if (( ${min} <= 14 )); then
+ 	hhmm="${year}:${hour}:(0[0-9]|1[0-4])"
+ elif (( ${min} > 14 )) && (( ${min} <= 29 )); then
+ 	hhmm="${year}:${hour}:(1[5-9]|2[0-9])"
+ elif (( ${min} > 29 )) && (( ${min} <= 44 )); then
+ 	hhmm="${year}:${hour}:(3[0-9]|4[0-4])"
+ elif (( ${min} > 44 )) && (( ${min} <= 59 )); then
+ 	hhmm="${year}:${hour}:(4[5-9]|5[0-9])"
+ fi
+alog="/var/log/apache2/${acct}.access.log"
+nlog="/var/log/nginx/${acct}.access.log" 
+ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
+	echo -e \"\\\n\033[1;31m\"NGINX:\"\033[1;000m\\\n${sshbr}Most frequent requests\\\n\"
+		while read line
+			do awk -F\"|\" '{print \$10}' | awk '{print \$2}'
+		done < <(sudo grep -E \"${hhmm}\" ${nlog})| sort | uniq -c | sort -nk1 | tail -5
+	echo -e \"\\\n${sshbr}Most frequent IP's\\\n\"
+		while read line
+			do awk -F\"|\" '{print \$3}' | sort | uniq -c | sort -nk1 | tail -5
+		done < <(sudo grep -E \"${hhmm}\" ${nlog})
+	echo -e \"\\\n${sshbr}Last 20 Hits to Log\\\n\"
+		sudo tail -n 20 ${nlog}
+	echo -e \"\\\n\033[1;31m\"APACHE:\"\033[1;000m\\\n${sshbr}Most frequent requests\\\n\"
+		while read line
+			do awk '{print \$1,\$4\"]\",\$5,\$6,\$7,\$8}'
+		done < <(sudo grep -E \"${hhmm}\" ${alog})| grep -oP '(?<=\\\").*(?=\\\")' | sort | uniq -c | sort -nk1 | tail -5
+	echo -e \"\\\n${sshbr}Most frequent IP's\\\n\"
+		while read line
+			do awk '{print \$1}' | sort | uniq -c | sort -nk1 | tail -5
+		done < <(sudo grep -E \"${hhmm}\" ${alog})
+	echo -e \"\\\n${sshbr}Last 20 Hits to Log\\\n\"
+		sudo tail -n 20 ${alog}
+exit"
+echo -e "\n${br}"
+}
+#---------------------------------------------------------------------------------------------#
+
+## get-file => Description: Get a file from a Site Directory
+# Usage: l2 get-file <account> <envir> <Remote File> <Local Dest>
+function get-file {
+	envir
+	if [[ -n ${four} ]] && [[ -n ${five} ]]; then
+		remote=${four}
+		local=${five}
+	elif [[ -n ${four} ]] && [[ -z ${five} ]]; then
+		dir=${four}
+		read -p "Where would you like this file on your local machine? " local
+	else
+		read -p "Where is this file in the Sites Directory? " remote
+		echo && read -p "Where would you like this file on your local machine? " local
+	fi
+		echo -e "\nGetting the file from the ${envir} Server\n${br}"
+		scp -rq ${uname}@${acct}.wpengine.com:/nas/wp/www/${envir}/${acct}/${remote} ${local}
+		read -p "What command do you want to use to Open it with? (Press Enter to skip) " cmd
+			if [[ -z ${cmd} ]]; then
+				exit 0
+			else
+			echo -e "\nRight, running \"${cmd} ${local}\"\n${br}"
+			sleep 2
+			${cmd} ${local}
+			fi
+}
+#---------------------------------------------------------------------------------------------#
+
+## put-file => Description: Put a file in Site Directory
+# Usage: l2 put-file <account> <envir> <Local File> <Remote Dest>
+function put-file {
+	envir
+	if [[ -n ${four} ]] && [[ -n ${five} ]]; then
+		local=${four}
+		remote=${five}
+	elif [[ -n ${four} ]] && [[ -z ${five} ]]; then
+		local=${four}
+		read -p "Where do you want it on the server? " remote
+	else
+		read -p "Where is the file? " local
+		echo && read -p "Where do you want it on the server? " remote
+	fi
+		echo -e "\nPutting the File on the ${envir} Server\n"
+		scp -rq ${local} ${uname}@${acct}.wpengine.com:/home/${uname}/${local}
+		ssh -tq ${uname}@${acct}.wpengine.com "sudo mv ${local} /nas/wp/www/${envir}/${acct}/${remote} && exit ; bash"
+}
+#---------------------------------------------------------------------------------------------#
+
+## htop => Description: Run htop on the customers server.
+# Usage: l2 htop <account>
+function htop {
+	pod
+	if [[ -n ${pod} ]]; then
+		acct=${pod}
+	fi
+	ssh -tq ${uname}@${acct}.wpengine.com "htop; exit"
+	echo && read -p "Would you like to run the hiload function too? ( X to exit ) - " q
+		if [[ ${q} = [xX] ]]; then
+			exit 0
+		else
+			hiload
+	fi
+}
+#---------------------------------------------------------------------------------------------#
+
+#################### Determine Environment ####################
+function envir {
+if [[ -n ${three} ]]; then
+	if [[ ${three} = p* ]]; then
+		envir=sites
+	elif [[ ${three} = s* ]]; then
+		envir=staging
+	else
+		read -p "Is this the Production or the Staging Server? " env
+		echo
+		if [[ ${env} = p* ]]; then
+			envir=sites
+		elif [[ ${env} = s* ]]; then
+			envir=staging
+		fi
+	fi
+elif [[ -z ${three} ]]; then
+	read -p "Is this the Production or the Staging Server? " env
+	echo
+		if [[ ${env} = p* ]]; then
+			envir=sites
+		elif [[ ${env} = s* ]]; then
+			envir=staging
+		fi
+fi
+}
+#################### USER NAME ####################
+
+function setuname {
+if [[ -z ${uname} ]]; then
+	read -p "What is your SSH User Name? " name
+	sed -ie "s/^uname=/uname=${name}/g" ${0}
+else
+	setname=$(awk '/^uname=/' ${0})
+	echo -e "\nYou've already set a User Name silly.\n --> ${setname}\n"
+fi
+}
+uname=
+
+#################### Get Account ####################
+function account {
+if [[ -z ${acct} ]]; then
+	echo && read -p "What Account are we working with? " acct
+	pod
+fi
+}
+
+#################### Declare Pod ####################
+function pod {
+if [[ ${acct} = [0-9]* ]]; then
+	pod="pod-${acct}"
+elif [[ ${acct} = pod-[0-9]* ]]; then
+	pod=${acct}
+fi
+}
+
+#################### MENU ####################
+
+function menu {
+while [[ -z ${opt} ]]; do
+	echo -e "${br}Available tasks:\n"
+	grep -irn "^##\s" ${0} | awk '{$1=""; $2="\033[1;31m"$2"\033[1;000m"; print}' | sort
+	echo -e ${br}
+	read -p "Type function name that you wish to use ( X to exit ): " opt
+	echo
+if [[ ${opt} = [xX] ]]; then
+	exit 0
+else
+account
+declare -F ${opt} &>/dev/null && echo && ${opt} && echo && exit 0 || echo -e "${opt}\nYou Didn't do it right! Try again.\n"; opt=""
+fi
+done
+}
+
+#################### RUN IT ####################
+
+acct=${2}
+three=${3}
+four=${4}
+five=${5}
+br="++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n"
+sshbr="++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\\\n"
+epoch=$(date +%s)
+if [[ -z ${uname} ]]; then
+	setuname
+else
+	if [[ -n ${1} ]]; then
+		echo -e "\nYour current username is set to: \033[1;31m"${uname}"\033[1;000m"
+		account
+		declare -F ${1} &>/dev/null && echo && ${1} && echo && exit 0 || 
+		echo -e "\n\033[1;31m"Looks like you entered the wrong function."\033[1;000m\n\nUsage is: l2 <function> <account> <optional argument>\n"
+		acct=
+		three=
+		four=
+		five=
+		menu
+	elif [[ ${1} = uname ]]; then
+		setuname
+	else
+		echo -e "\nUsage is: l2 <function> <account> <optional argument>\n"
+		acct=
+		three=
+		four=
+		five=
+		menu
+	fi
+fi
+#---------------------------------------------------------------------------------------------#
