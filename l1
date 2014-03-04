@@ -374,6 +374,25 @@ function htop {
 }
 #---------------------------------------------------------------------------------------------#
 
+## ttfb => Description: Measure TTFB 10 times with 1s intervals.
+# Usage: l1 ttfb <domain.com>
+function ttfb {
+if [[ -n ${acct} ]]; then
+	echo -e "\n\nTTFB measured 10 times with 1s intervals:"
+	counter=0; 
+	echo -e ${br}"\n Testing: ${acct}\n"
+		for counter in {1..10}; do 
+		echo ${counter} - $(curl -o /dev/null -w "Connect: %{time_connect} TTFB: %{time_starttransfer} Total time: %{time_total} \n" --silent --output /dev/null ${acct});
+		sleep 1
+		done
+	echo ${br};
+else
+	echo -e "\nUsage: ttfb <domain_name>.\n\n"
+	return 0
+fi
+}
+#---------------------------------------------------------------------------------------------#
+
 #################### Determine Environment ####################
 function envir {
 if [[ -n ${three} ]]; then
