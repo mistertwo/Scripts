@@ -1,6 +1,10 @@
 #!/bin/bash
 #Author: BMO and JM
 #Version: 0.3.6
+# 0.3.6 -- Added the "logs" function - BMO 3/5
+# 0.3.6 -- Added the "bot" function - BMO 3/5
+# 0.3.6 -- Added the "uncan" function - BMO 3/5
+# 0.3.6 -- Added the DNS function - BMO 3/5
 # 0.3.6 -- Added 444 to the error www-codes array -BMO 3/5
 # 0.3.5 -- Fixed a typo in the nginx-conf function - BMO 2/27
 # 0.3.4 -- Fixed check for pod number on "htop" function - BMO 2/20
@@ -9,10 +13,6 @@
 # 0.3.1 -- More dynamic "cd to" options when logging in -BMO 2/13/14
 # 0.3.1 -- Bug in the transition from slog to slogchk where the account name has numbers fixed -BMO 2/13/14
 # 0.3.1 -- Made the Menu Items red for easier reading -BMO 2/13/14
-# 0.3.1 -- Only asking to move on to "slog" from "hiload" if day = today. -BMO 2/13/14
-# 0.3.1 -- Added a better "day" variable to hiload, where it uses today date if none was defined. -BMO 2/13/14
-# 0.3.1 -- "htop" into "hiload" was strung together -BMO 2/13/14
-# 0.3.1 -- Added the "htop" function -BMO 2/13/14
 
 
 
@@ -362,7 +362,7 @@ function duplicity {
 			scp ${uname}@${acct}.wpengine.com:${acct}-duplicity.${epoch}.tar ${acct}-duplicity.${epoch}.tar 
 		elif [[ ${option} = r* ]] || [[ ${option} = R* ]]; then
 			echo -e "\nSending you in as Root -> Best of luck soldier. (~sad trumpet plays in the background~)\n"
-			ssh -tq ${uname}@bmoore.wpengine.com "sudo ssh root@${acct}.wpengine.com && exit ; bash"
+			ssh -tq ${uname}@${acct}.wpengine.com "sudo ssh root@${acct}.wpengine.com && exit ; bash"
 		elif [[ ${option} = m* ]] || [[ ${option} = M* ]]; then
 			read -p "Tar it or as is? " method
 				if [[ ${method} = t* ]]; then
@@ -483,12 +483,12 @@ echo -e "\n${br}"
 # Usage: l2 acct-count <account>
 function acct-count {
 ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v; count=0
-for i in \$(sudo /nas/wp/ec2/cluster parent-child ${acct})
-do [ -d /nas/wp/www/sites/\$i ] && let count=count+1; done
-echo -e \"\\\n${sshbr}\\\n   \033[1;31m"${acct}"\033[1;000m Has \${count} Active Accounts on \$(hostname)\\\n\\\n${sshbr}\"
-for i in \$(sudo /nas/wp/ec2/cluster parent-child ${acct})
-do let count=count+1; done
-echo -e \"\\\n   \033[1;31m"${acct}"\033[1;000m Has \${count} Accounts Active or De-Active.\\\n\\\n${sshbr}\"
+	for i in \$(sudo /nas/wp/ec2/cluster parent-child ${acct})
+		do [ -d /nas/wp/www/sites/\$i ] && let count=count+1; done
+	echo -e \"\\\n${sshbr}\\\n   \033[1;31m"${acct}"\033[1;000m Has \${count} Active Accounts on \$(hostname)\\\n\\\n${sshbr}\"
+	for i in \$(sudo /nas/wp/ec2/cluster parent-child ${acct})
+		do let count=count+1; done
+	echo -e \"\\\n   \033[1;31m"${acct}"\033[1;000m Has \${count} Accounts Active or De-Active.\\\n\\\n${sshbr}\"
 exit"
 }
 #---------------------------------------------------------------------------------------------#
@@ -568,11 +568,98 @@ if [[ -n ${acct} ]]; then
 		echo ${counter} - $(curl -o /dev/null -w "Connect: %{time_connect} TTFB: %{time_starttransfer} Total time: %{time_total} \n" --silent --output /dev/null ${acct});
 		sleep 1
 		done
-	echo ${br};
+	echo -e ${br};
 else
 	echo -e "\nUsage: ttfb <domain_name>.\n\n"
 	return 0
 fi
+}
+#---------------------------------------------------------------------------------------------#
+
+## dns => Description: Get as much DNS Information as we can.
+# Usage: l2 dns <domain.com>
+function dns {
+	pod
+	if [[ -n ${pod} ]]; then
+		acct=${pod}
+	fi
+	echo -e "\nDig the Domain for its DNS Records\n${br}"
+		dig ${acct} | grep -A 3 ";; ANSWER SECTION:"
+	echo -e "\nWhois to find their Name Servers\n${br}"
+		whois ${acct} | grep -iA 9 -m 1 "domain name:"
+		ttfb
+	echo -e "\nPinging the Domain 3 times\n${br}"
+		ping -c 3 ${acct}
+}
+#---------------------------------------------------------------------------------------------#
+
+## uncan => Description: Uncancel an account.
+# Usage: l2 uncan <account>
+function uncan {
+	echo -e "\nAlright, lets uncancel that account!\n${br}"
+	ssh -tq ${uname}@${acct}.wpengine.com "sudo /nas/wp/ec2/cluster uncancel-site ${acct}; exit"
+}
+#---------------------------------------------------------------------------------------------#
+
+## bot-redirect => Description: Turn off the Bot Redirect
+# Usage: l2 bot-redirect <account>
+function bot-redirect {
+	echo -e "\nTurning off the Redirect\n${br}"
+		ssh -tq ${uname}@${acct}.wpengine.com "echo & sudo -v
+			php /nas/wp/www/tools/wpe.php option-set ${acct} redirect_bots '0';
+				echo -e \"\\\nRunning PRA / RS to wrap it all up\\\n${sshbr}
+			sudo /nas/wp/admin perm-reload-apply ${acct}
+			sudo /nas/wp/admin reload ${acct}
+		exit"
+}
+#---------------------------------------------------------------------------------------------#
+
+## clear-rewrites => Description: Clear out the accounts Rewrite Rules.
+# Usage: l2 clear-rewrites <account>
+function clear-rewrites {
+	echo -e "\nClearning out the Rewrite Rules\n${br}"
+	ssh -tq ${uname}@${acct}.wpengine.com "echo & sudo -v
+		sudo php /nas/wp/www/tools/wpe.php option-set ${acct} rewrites NULL
+			echo -e \"\\\nReloading Config to wrap it all up\\\n${ssshbr}
+		sudo /nas/wp/admin regen-config ${acct}
+	exit"
+}
+#---------------------------------------------------------------------------------------------#
+
+## logs => Description: Check the NGINX or Apache Access Logs
+# Usage: l2 logs <account> <service>
+function logs {
+	if [[ -z ${three} ]]; then
+		echo
+		read -p "Which Access Logs are you looking for - Apache or NGINX - " three
+		echo
+	fi
+	while true; do
+		if [[ ${three} = [aA]* ]]; then
+			three="apache2"
+		elif [[ ${three} = [nN]* ]]; then
+			three="nginx"
+		fi
+		ssh -tq ${uname}@${acct}.wpengine.com "echo & sudo -v
+			sudo less /var/log/${three}/${acct}.access.log
+				echo
+				read -p \"Would you like to open the previous log? ( Y / N ) \" a
+					if [[ \${a} = [yY]* ]]; then
+						sudo less /var/log/${three}/${acct}.access.log.1
+					fi
+		exit"
+	echo
+	read -p "Would you like to try the other Access Logs? ( Y / N ) " a
+		if [[ ${a} = [yY] ]]; then
+			if [[ ${three} = [nN]* ]]; then
+				three="apache2"
+			elif [[ ${three} = [aA]* ]]; then
+				three="nginx"
+			fi
+		else
+			echo & exit
+		fi
+	done
 }
 #---------------------------------------------------------------------------------------------#
 

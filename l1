@@ -2,6 +2,8 @@
 #Author: BMO and JM
 #Version: 0.0.2
 
+# 0.0.2 -- Added the logs function - BMO 3/5
+# 0.0.2 -- Added the DNS function - BMO 3/5
 # 0.0.2 -- Added 444 to the error www-codes array -BMO 3/5
 
 #################### FUNCTIONS ####################
@@ -395,6 +397,59 @@ fi
 }
 #---------------------------------------------------------------------------------------------#
 
+## dns => Description: Get as much DNS Information as we can.
+# Usage: l2 dns <domain.com>
+function dns {
+	pod
+	if [[ -n ${pod} ]]; then
+		acct=${pod}
+	fi
+	echo -e "\nDig the Domain for its DNS Records\n${br}"
+		dig ${acct} | grep -A 3 ";; ANSWER SECTION:"
+	echo -e "\nWhois to find their Name Servers\n${br}"
+		whois ${acct} | grep -iA 9 -m 1 "domain name:"
+		ttfb
+	echo -e "\nPinging the Domain 3 times\n${br}"
+		ping -c 3 ${acct}
+}
+#---------------------------------------------------------------------------------------------#
+
+## logs => Description: Check the NGINX or Apache Access Logs
+# Usage: l2 logs <account> <service>
+function logs {
+	if [[ -z ${three} ]]; then
+		echo
+		read -p "Which Access Logs are you looking for - Apache or NGINX - " three
+		echo
+	fi
+	while true; do
+		if [[ ${three} = [aA]* ]]; then
+			three="apache2"
+		elif [[ ${three} = [nN]* ]]; then
+			three="nginx"
+		fi
+		ssh -tq ${uname}@${acct}.wpengine.com "echo & sudo -v
+			sudo less /var/log/${three}/${acct}.access.log
+				echo
+				read -p \"Would you like to open the previous log? ( Y / N ) \" a
+					if [[ \${a} = [yY]* ]]; then
+						sudo less /var/log/${three}/${acct}.access.log.1
+					fi
+		exit"
+	echo
+	read -p "Would you like to try the other Access Logs? ( Y / N ) " a
+		if [[ ${a} = [yY] ]]; then
+			if [[ ${three} = [nN]* ]]; then
+				three="apache2"
+			elif [[ ${three} = [aA]* ]]; then
+				three="nginx"
+			fi
+		else
+			echo & exit
+		fi
+	done
+}
+#---------------------------------------------------------------------------------------------#
 #################### Determine Environment ####################
 function envir {
 if [[ -n ${three} ]]; then
@@ -432,7 +487,7 @@ else
 	echo -e "\nYou've already set a User Name silly.\n --> ${setname}\n"
 fi
 }
-uname=
+uname=_
 
 #################### Get Account ####################
 function account {
