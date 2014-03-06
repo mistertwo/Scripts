@@ -392,7 +392,6 @@ function slog {
 		echo
 		read -p "What Date would you like to check? DD/MON - " four
 	fi
-if 
 year=$(date +%Y)
 hour=$(echo ${three} | awk -F':' '{print $1}')
 min=$(echo ${three} | awk -F':' '{print $2}')
