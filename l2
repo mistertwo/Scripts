@@ -297,7 +297,7 @@ function find {
 	read -p "Is this a File or a String that you are looking for? " which
 	echo -e "\n"${br}
 	if [[ ${which} = f* ]]; then
-		ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct}/ && find . -type f -iname \"*${search}*\" ! -path \"./wp-admin/*\" ! -path \"./wp-includes/*\" > /home/${uname}/find.${epoch} && exit ; bash"
+		ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/${envir}/${acct}/ && sudo find . -type f -iname \"*${search}*\" ! -path \".git/*\" ! -path \"./wp-admin/*\" ! -path \"./wp-includes/*\" > /home/${uname}/find.${epoch} && exit ; bash"
 		scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/find.${epoch} find.${epoch}
 		nl find.${epoch}
 	else
@@ -384,12 +384,15 @@ function duplicity {
 #---------------------------------------------------------------------------------------------#
 
 ## slog => Description: Count which Apache log had the most hits in a time range.
-# Usage: l2 slog <account> <HH:MM>
-# Example l2 slog wpengine 14:25
+# Usage: l2 slog <account> <HH:MM> <DD/MONTH>
+# Example l2 slog wpengine 14:25 02/Mar
 function slog {
 	if [[ -z ${three} ]]; then
 		read -p "What Time (UTC) would you like to Check? HH:MM - " three
+		echo
+		read -p "What Date would you like to check? DD/MON - " four
 	fi
+if 
 year=$(date +%Y)
 hour=$(echo ${three} | awk -F':' '{print $1}')
 min=$(echo ${three} | awk -F':' '{print $2}')
@@ -406,16 +409,35 @@ if (( ${min} <= 14 )); then
  if [[ -n ${pod} ]]; then
 	acct=${pod}
  fi
-ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
-echo -e \"\\\n${sshbr}\033[1;31m\"NGINX\"\033[1;000m log counts for ${hhmm}:\\\n\\\nHits - Account\"
-for log in \$(sudo find /var/log/nginx/ -maxdepth 1 -type f ! -name *staging* ! -name *gz ! -name *1)
-do echo \$(sudo grep -E \"${hhmm}\" \${log} | wc -l) - \$(echo \${log} | awk -F'/' '{print \$5}' | awk -F'.' '{print \$1}') | grep -v ^0
-done | sort -nk1 | tail
-echo -e \"\\\n${sshbr}\033[1;31m\"Apache\"\033[1;000m log counts for ${hhmm}:\\\n\\\nHits - Account\"
-for log in \$(sudo find /var/log/apache2/ -maxdepth 1 -type f ! -name *staging* ! -name *gz ! -name *1)
-do echo \$(sudo grep -E \"${hhmm}\" \${log} | wc -l) - \$(echo \${log} | awk -F'/' '{print \$5}' | awk -F'.' '{print \$1}') | grep -v ^0
-done | sort -nk1 | tail
-exit"
+if [[ -z ${four} ]]; then
+	ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
+		echo -e \"\\\n${sshbr}\033[1;31m\"NGINX\"\033[1;000m log counts for ${hhmm}:\\\n\\\nHits - Account\"
+			for log in \$(sudo find /var/log/nginx/ -maxdepth 1 -type f ! -name *staging* ! -name *gz ! -name *1)
+				do echo \$(sudo grep -E \"${hhmm}\" \${log} | wc -l) - \$(echo \${log} | awk -F'/' '{print \$5}' | awk -F'.' '{print \$1}') | grep -v ^0
+			done | sort -nk1 | tail
+		echo -e \"\\\n${sshbr}\033[1;31m\"Apache\"\033[1;000m log counts for ${hhmm}:\\\n\\\nHits - Account\"
+			for log in \$(sudo find /var/log/apache2/ -maxdepth 1 -type f ! -name *staging* ! -name *gz ! -name *1)
+				do echo \$(sudo grep -E \"${hhmm}\" \${log} | wc -l) - \$(echo \${log} | awk -F'/' '{print \$5}' | awk -F'.' '{print \$1}') | grep -v ^0
+			done | sort -nk1 | tail
+	exit"
+else
+	ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
+		echo -e \"\\\n${sshbr}\033[1;31m\"NGINX\"\033[1;000m log counts for ${hhmm}:\\\n\\\nHits - Account\"
+			for log in \$(sudo find /var/log/nginx/ -maxdepth 1 -type f ! -name *staging* ! -name *.log)
+				do if [[ \${log} != *.gz ]]; then
+						echo \$(sudo grep -E \"${hhmm}\" \${log} | wc -l) - \$(echo \${log} | awk -F'/' '{print \$5}' | awk -F'.' '{print \$1}') | grep -v ^0
+					else
+						echo \$(sudo zgrep . \${log} | grep -i ${four} | sudo grep -E \"${hhmm}\" \${log} | wc -l) - \$(echo \${log} | awk -F'/' '{print \$5}' | awk -F'.' '{print \$1}') | grep -v ^0
+				fi; done | sort -nk1 | tail
+		echo -e \"\\\n${sshbr}\033[1;31m\"Apache\"\033[1;000m log counts for ${hhmm}:\\\n\\\nHits - Account\"
+			for log in \$(sudo find /var/log/nginx/ -maxdepth 1 -type f ! -name *staging* ! -name *.log)
+				do if [[ \${log} != *.gz ]]; then
+						echo \$(sudo grep -E \"${hhmm}\" \${log} | wc -l) - \$(echo \${log} | awk -F'/' '{print \$5}' | awk -F'.' '{print \$1}') | grep -v ^0
+					else
+						echo \$(sudo zgrep . \${log} | grep -i ${four} | sudo grep -E \"${hhmm}\" \${log} | wc -l) - \$(echo \${log} | awk -F'/' '{print \$5}' | awk -F'.' '{print \$1}') | grep -v ^0
+				fi; done | sort -nk1 | tail
+	exit"
+fi
 echo -e "\n${br}"
  read -p "Which Account's log would you like to check? X to quit - " a
  echo
