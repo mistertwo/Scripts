@@ -5,18 +5,31 @@
 
 #Start Synergy
 function syn-start { 
+if [[ $(hostname) = cyberlady ]]; then
 	synergyc -f othello &
+elif [[ $(hostname) = othello ]]; then
+	synergys -a 10.10.64.16 &
+fi
 }
 
 #Kill Synergy
 function syn-kill {
+if [[ $(hostname) = cyberlady ]]; then
 	pkill synergyc
+elif [[ $(hostname) = othello ]]; then
+	pkill synergys
+fi
 }
 
 #Kill and then Start Synergy
 function syn-restart {
+if [[ $(hostname) = cyberlady ]]; then
 	pkill synergyc
 	synergyc -f othello &
+elif [[ $(hostname) = othello ]]; then
+	pkill synergys
+	synergys -a 10.10.64.16 &
+fi
 }
 
 #Run it
