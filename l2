@@ -424,7 +424,7 @@ if (( ${min} <= 14 )); then
 			done | sort -nk1 | tail
 	exit"
 else
-	mintime=$(expr $(expr $(date +%s) - $(date -d "$(echo "${four}" | awk -F"/" '{print $1 $2 '$(date +%Y)'}')" +%s)) / 86400 - 1)
+	mintime=$(expr $(expr $(date +%s) - $(date -d "$(echo "${four}" | awk -F"/" '{print $1 $2 '$(date +%Y)'}')" +%s)) / 86400 - 2)
 	maxtime=$(expr $(expr $(date +%s) - $(date -d "$(echo "${four}" | awk -F"/" '{print $1 $2 '$(date +%Y)'}')" +%s)) / 86400 + 1)
 	echo -e "\n\033[1;31m\"THIS IS GOING TO TAKE SOME TIME\"\033[1;000m"
 	ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
@@ -502,7 +502,7 @@ if [[ -z ${four} ]] || [[ ${four} = $(date +%d/%b | awk '{print tolower($0)}') ]
 			sudo grep -E \"${hhmm}\" ${alog} | tail -n 20
 	exit"
 else
-	mintime=$(expr $(expr $(date +%s) - $(date -d "$(echo "${four}" | awk -F"/" '{print $1 $2 '$(date +%Y)'}')" +%s)) / 86400 - 1)
+	mintime=$(expr $(expr $(date +%s) - $(date -d "$(echo "${four}" | awk -F"/" '{print $1 $2 '$(date +%Y)'}')" +%s)) / 86400 - 2)
 	maxtime=$(expr $(expr $(date +%s) - $(date -d "$(echo "${four}" | awk -F"/" '{print $1 $2 '$(date +%Y)'}')" +%s)) / 86400 + 1)
 	alog="for i in \$(sudo find /var/log/apache2/ -maxdepth 1 -type f -iname \"${acct}.access.log.*\" -mtime +${mintime} -mtime -${maxtime}); do echo \${i}; done"
 	nlog="for i in \$(sudo find /var/log/nginx/ -maxdepth 1 -type f -iname \"${acct}.access.log.*\" -mtime +${mintime} -mtime -${maxtime}); do echo \${i}; done"
@@ -510,21 +510,21 @@ else
 		echo -e \"\\\n\033[1;31m\"NGINX:\"\033[1;000m\\\n${sshbr}Most frequent requests\\\n\"
 				while read line
 					do awk -F\"|\" '{print \$10}' | awk '{print \$2}'
-				done < <(sudo zcat -f \$(${nlog}) | grep -i ${four} | sudo grep -E \"${hhmm}\")| sort | uniq -c | sort -nk1 | tail -5
+				done < <(sudo zcat -f \$(${nlog}) | grep -i ${four} | grep -E \"${hhmm}\")| sort | uniq -c | sort -nk1 | tail -5
 			echo -e \"\\\n${sshbr}Most frequent IP's\\\n\"
 				while read line
 					do awk -F\"|\" '{print \$3}' | sort | uniq -c | sort -nk1 | tail -5
-				done < <(sudo zcat -f \$(${nlog}) | grep -i ${four} | sudo grep -E \"${hhmm}\")
+				done < <(sudo zcat -f \$(${nlog}) | grep -i ${four} | grep -E \"${hhmm}\")
 			echo -e \"\\\n${sshbr}Last 20 Hits to Log\\\n\"
 				sudo zcat -f \$(${nlog}) | grep -i ${four} | grep -E \"${hhmm}\" | tail -n 20
 			echo -e \"\\\n\033[1;31m\"APACHE:\"\033[1;000m\\\n${sshbr}Most frequent requests\\\n\"
 				while read line
 					do awk '{print \$1,\$4\"]\",\$5,\$6,\$7,\$8}'
-				done < <(sudo zcat -f \$(${alog}) | grep -i ${four} | sudo grep -E \"${hhmm}\")| grep -oP '(?<=\\\").*(?=\\\")' | sort | uniq -c | sort -nk1 | tail -5
+				done < <(sudo zcat -f \$(${alog}) | grep -i ${four} | grep -E \"${hhmm}\")| grep -oP '(?<=\\\").*(?=\\\")' | sort | uniq -c | sort -nk1 | tail -5
 			echo -e \"\\\n${sshbr}Most frequent IP's\\\n\"
 				while read line
 					do awk '{print \$1}' | sort | uniq -c | sort -nk1 | tail -5
-				done < <(sudo zcat -f \$(${alog}) | grep -i ${four} | sudo grep -E \"${hhmm}\")
+				done < <(sudo zcat -f \$(${alog}) | grep -i ${four} | grep -E \"${hhmm}\")
 			echo -e \"\\\n${sshbr}Last 20 Hits to Log\\\n\"
 				sudo zcat -f \$(${alog}) | grep -i ${four} | grep -E \"${hhmm}\" | tail -n 20
 	exit"
