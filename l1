@@ -1,7 +1,8 @@
 #!/bin/bash
 #Author: BMO and JM
-#Version: 0.0.2
+#Version: 0.0.3
 
+# 0.0.3 -- Removed references to L2 script - BMO 3/17
 # 0.0.2 -- Added the logs function - BMO 3/5
 # 0.0.2 -- Added the DNS function - BMO 3/5
 # 0.0.2 -- Added 444 to the error www-codes array -BMO 3/5
@@ -9,7 +10,7 @@
 #################### FUNCTIONS ####################
 #---------------------------------------------------------------------------------------------#
 ## www-codes => Description: Grab occurrences of a certain HTTP code in an account's logs.
-#Usage l2 www-codes <account> <error code>
+#Usage l1 www-codes <account> <error code>
 function www-codes {
 if [[ -z ${three} ]] && [[ -z ${err} ]]; then
 	read -p "What HTTP Code would you like to search for? " err
@@ -53,7 +54,7 @@ done
 #---------------------------------------------------------------------------------------------#
 
 ## ng-logs => Description: Show log hits from nginx that took the longest time to complete.
-# Usage L2 ng-logs <account>
+# Usage l1 ng-logs <account>
 function ng-logs { 
 ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
 	echo -e \"\\\nDescription: Nginx log entries below are sorted by Page Load Time (8th | delimited column).\"
@@ -71,7 +72,7 @@ fi
 #---------------------------------------------------------------------------------------------#
 
 ## sql-slow => Description: Show problematic sql information.(DO NOT PASTE THIS COMPLETE OUTPUT TO A CUSTOMER)
-#usage l2 sql-slow <account>
+#usage l1 sql-slow <account>
 function sql-slow {
 pod
 if [[ -n ${pod} ]]; then
@@ -92,7 +93,7 @@ fi
 #---------------------------------------------------------------------------------------------#
 
 ## hiload => Description: Show load that was 1.5x the number of processer cores.
-# Usage l2 hiload <account> <DD>
+# Usage l1 hiload <account> <DD>
 function hiload { 
 if [[ -z ${three} ]]; then
 	day=$(date +%d)
@@ -125,7 +126,7 @@ fi
 #---------------------------------------------------------------------------------------------#
 
 ## nginx-conf =>  Description: Open the accounts NGINX Config file with less.
-#Usage: l2 nginx-conf <account>
+#Usage: l1 nginx-conf <account>
 function nginx-conf {
 ssh -tq ${uname}@${acct}.wpengine.com "if [[ ! -f /nas/wp/conf/lb/sites/${acct}.conf ]]
 	then echo -e \"\\\nNo File, maybe you typed the account wrong?\"
@@ -138,7 +139,7 @@ ssh -tq ${uname}@${acct}.wpengine.com "if [[ ! -f /nas/wp/conf/lb/sites/${acct}.
 #---------------------------------------------------------------------------------------------#
 
 ## login =>  Description: Login to an Account via SSH (location optional)
-# Usage l2 login <account> <environment> <location>
+# Usage l1 login <account> <environment> <location>
 function login {
 	pod
 	if [[ -n ${pod} ]]; then
@@ -174,7 +175,7 @@ function login {
 #---------------------------------------------------------------------------------------------#
 
 ## find => Description: Find either a File or a String of Text in the account.
-# Usage: l2 find <account> <envir> "<file/text>"
+# Usage: l1 find <account> <envir> "<file/text>"
 function find {
 	envir
 	if [[ -n ${four} ]]; then
@@ -219,8 +220,8 @@ function find {
 #---------------------------------------------------------------------------------------------#
 
 ## slog => Description: Count which Apache log had the most hits in a time range.
-# Usage: l2 slog <account> <HH:MM>
-# Example l2 slog wpengine 14:25
+# Usage: l1 slog <account> <HH:MM>
+# Example l1 slog wpengine 14:25
 function slog {
 	if [[ -z ${three} ]]; then
 		read -p "What Time (UTC) would you like to Check? HH:MM - " three
@@ -267,8 +268,8 @@ echo -e "\n${br}"
 #---------------------------------------------------------------------------------------------#
 
 ## slogchk => Description: Show heaviest requests and IP's in log after running "slog".
-# Usage: l2 slogchk <account> <HH:MM>
-# Example l2 slogchk wpengine 14:25
+# Usage: l1 slogchk <account> <HH:MM>
+# Example l1 slogchk wpengine 14:25
 function slogchk {
 year=$(date +%Y)
 	if [[ -z ${three} ]] && [[ -z ${hhmm} ]]; then
@@ -315,7 +316,7 @@ echo -e "\n${br}"
 #---------------------------------------------------------------------------------------------#
 
 ## get-file => Description: Get a file from a Site Directory
-# Usage: l2 get-file <account> <envir> <Remote File> <Local Dest>
+# Usage: l1 get-file <account> <envir> <Remote File> <Local Dest>
 function get-file {
 	envir
 	if [[ -n ${four} ]] && [[ -n ${five} ]]; then
@@ -342,7 +343,7 @@ function get-file {
 #---------------------------------------------------------------------------------------------#
 
 ## put-file => Description: Put a file in Site Directory
-# Usage: l2 put-file <account> <envir> <Local File> <Remote Dest>
+# Usage: l1 put-file <account> <envir> <Local File> <Remote Dest>
 function put-file {
 	envir
 	if [[ -n ${four} ]] && [[ -n ${five} ]]; then
@@ -362,7 +363,7 @@ function put-file {
 #---------------------------------------------------------------------------------------------#
 
 ## htop => Description: Run htop on the customers server.
-# Usage: l2 htop <account>
+# Usage: l1 htop <account>
 function htop {
 	pod
 	if [[ -n ${pod} ]]; then
@@ -398,7 +399,7 @@ fi
 #---------------------------------------------------------------------------------------------#
 
 ## dns => Description: Get as much DNS Information as we can.
-# Usage: l2 dns <domain.com>
+# Usage: l1 dns <domain.com>
 function dns {
 	pod
 	if [[ -n ${pod} ]]; then
@@ -415,7 +416,7 @@ function dns {
 #---------------------------------------------------------------------------------------------#
 
 ## logs => Description: Check the NGINX or Apache Access Logs
-# Usage: l2 logs <account> <service>
+# Usage: l1 logs <account> <service>
 function logs {
 	if [[ -z ${three} ]]; then
 		echo
@@ -540,7 +541,7 @@ else
 		echo -e "\nYour current username is set to: \033[1;31m"${uname}"\033[1;000m"
 		account
 		declare -F ${1} &>/dev/null && echo && ${1} && echo && exit 0 || 
-		echo -e "\n\033[1;31m"Looks like you entered the wrong function."\033[1;000m\n\nUsage is: l2 <function> <account> <optional argument>\n"
+		echo -e "\n\033[1;31m"Looks like you entered the wrong function."\033[1;000m\n\nUsage is: l1 <function> <account> <optional argument>\n"
 		acct=
 		three=
 		four=
@@ -549,7 +550,7 @@ else
 	elif [[ ${1} = uname ]]; then
 		setuname
 	else
-		echo -e "\nUsage is: l2 <function> <account> <optional argument>\n"
+		echo -e "\nUsage is: l1 <function> <account> <optional argument>\n"
 		acct=
 		three=
 		four=

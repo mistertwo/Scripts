@@ -1,6 +1,7 @@
 #!/bin/bash
 #Author: BMO and JM
-#Version: 0.3.8
+#Version: 0.3.9
+# 0.3.9 -- Made adjustments to Slog and Slogchk to ensure compatibilty with OSX - BMO 3/17
 # 0.3.8 -- Added -mtime to the Find part of slog and slogchk through older logs -BMO 3/7
 # 0.3.7 -- Included the ability to check Past logs with slog and slogchk -BMO 3/6
 # 0.3.6 -- Added the "logs" function - BMO 3/5
@@ -11,9 +12,7 @@
 # 0.3.5 -- Fixed a typo in the nginx-conf function - BMO 2/27
 # 0.3.4 -- Fixed check for pod number on "htop" function - BMO 2/20
 # 0.3.3 -- Added NGINX options to "slog" and "slogchk" functions -BMO 2/19/14
-# 0.3.2 -- Added a condition check to the "www-codes" function -BMO 2/14/14
-# 0.3.1 -- More dynamic "cd to" options when logging in -BMO 2/13/14
-# 0.3.1 -- Bug in the transition from slog to slogchk where the account name has numbers fixed -BMO 2/13/14
+
 
 
 
@@ -31,15 +30,8 @@ else
 	fi
 fi
 array=( 200 301 302 304 400 403 404 408 444 500 501 502 503 504 507 )
-#singlearray=( 2 3 4 5 )
-#if [[ ${err} = ${singlearray[*]} ]]; then
-#	err="${err}0*"
-#fi
 for i in ${array[*]}; do
 	if [[ ${i} = ${err} ]]; then
-		#if [[ ${err} = [0-9][0-9]\* ]]; then
-		#	err=$(awk '{print $1, $2, "[0-9]"}' ${err})
-		#fi
 		ssh -tq ${uname}@${acct}.wpengine.com "sudo cat /var/log/nginx/${acct}.access.log > /home/${uname}/${acct}.${epoch}.nginx && sudo cat /var/log/apache2/${acct}.access.log > /home/${uname}/${acct}.${epoch}.apache && exit ; bash"
 		scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.nginx ${acct}.${epoch}.nginx && scp -rq ${uname}@${acct}.wpengine.com:/home/${uname}/${acct}.${epoch}.apache ${acct}.${epoch}.apache
 		echo -e "\nDescription: Displays requests that had highest occurrences of the ${err} HTTP Status in ${acct}'s logs. Request counts are to the left of the requests below."
@@ -242,7 +234,7 @@ ssh -tq ${uname}@${acct}.wpengine.com "if [[ ! -f /nas/wp/conf/lb/sites/${acct}.
 	then echo -e \"\\\nNo File, maybe you typed the account wrong?\"
 		exit
     else
-    	less /nas/wp/conf/lb/sites/${acct}.conf
+    	cat /nas/wp/conf/lb/sites/${acct}.conf
     exit
 	fi"
 }
@@ -424,16 +416,16 @@ if (( ${min} <= 14 )); then
 			done | sort -nk1 | tail
 	exit"
 else
-	mintime=$(expr $(expr $(date +%s) - $(date -d "$(echo "${four}" | awk -F"/" '{print $1 $2 '$(date +%Y)'}')" +%s)) / 86400 - 2)
-	maxtime=$(expr $(expr $(date +%s) - $(date -d "$(echo "${four}" | awk -F"/" '{print $1 $2 '$(date +%Y)'}')" +%s)) / 86400 + 1)
 	echo -e "\n\033[1;31m\"THIS IS GOING TO TAKE SOME TIME\"\033[1;000m"
 	ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
+		mintime=\$(expr \$(expr \$(date +%s) - \$(date -d \"\$(echo \"${four}\" | awk -F\"/\" '{print \$1 \$2 '\$(date +%Y)'}')\" +%s)) / 86400 - 2)
+		maxtime=\$(expr \$(expr \$(date +%s) - \$(date -d \"\$(echo \"${four}\" | awk -F\"/\" '{print \$1 \$2 '\$(date +%Y)'}')\" +%s)) / 86400 + 1)
 		echo -e \"\\\n${sshbr}\033[1;31m\"NGINX\"\033[1;000m log counts:\\\n\\\nHits - Account\"
-			for log in \$(sudo find /var/log/nginx/ -maxdepth 1 -type f ! -name *apache* ! -name *staging* ! -name *.log -mtime +${mintime} -mtime -${maxtime})
+			for log in \$(sudo find /var/log/nginx/ -maxdepth 1 -type f ! -name *apache* ! -name *staging* ! -name *.log -mtime +\${mintime} -mtime -\${maxtime})
 				do echo \$(sudo zcat -f \${log} | grep -i ${four} | grep -E \"${hhmm}\" | wc -l) - \$(echo \${log} | awk -F'/' '{print \$5}' | awk -F'.' '{print \$1}') | grep -v ^0
 			done | sort -nk1 | tail
 		echo -e \"\\\n${sshbr}\033[1;31m\"Apache\"\033[1;000m log counts:\\\n\\\nHits - Account\"
-			for log in \$(sudo find /var/log/apache2/ -maxdepth 1 -type f ! -name *staging* ! -name *.log ! -name *error* -mtime +${mintime} -mtime -${maxtime})
+			for log in \$(sudo find /var/log/apache2/ -maxdepth 1 -type f ! -name *staging* ! -name *.log ! -name *error* -mtime +\${mintime} -mtime -\${maxtime})
 				do echo \$(sudo zcat -f \${log} | grep -i ${four} | grep -E \"${hhmm}\" | wc -l) - \$(echo \${log} | awk -F'/' '{print \$5}' | awk -F'.' '{print \$1}') | grep -v ^0
 			done | sort -nk1 | tail
 	exit"
@@ -502,11 +494,11 @@ if [[ -z ${four} ]] || [[ ${four} = $(date +%d/%b | awk '{print tolower($0)}') ]
 			sudo grep -E \"${hhmm}\" ${alog} | tail -n 20
 	exit"
 else
-	mintime=$(expr $(expr $(date +%s) - $(date -d "$(echo "${four}" | awk -F"/" '{print $1 $2 '$(date +%Y)'}')" +%s)) / 86400 - 2)
-	maxtime=$(expr $(expr $(date +%s) - $(date -d "$(echo "${four}" | awk -F"/" '{print $1 $2 '$(date +%Y)'}')" +%s)) / 86400 + 1)
-	alog="for i in \$(sudo find /var/log/apache2/ -maxdepth 1 -type f -iname \"${acct}.access.log.*\" -mtime +${mintime} -mtime -${maxtime}); do echo \${i}; done"
-	nlog="for i in \$(sudo find /var/log/nginx/ -maxdepth 1 -type f -iname \"${acct}.access.log.*\" -mtime +${mintime} -mtime -${maxtime}); do echo \${i}; done"
+	alog="for i in \$(sudo find /var/log/apache2/ -maxdepth 1 -type f -iname \"${acct}.access.log.*\" -mtime +\${mintime} -mtime -\${maxtime}); do echo \${i}; done"
+	nlog="for i in \$(sudo find /var/log/nginx/ -maxdepth 1 -type f -iname \"${acct}.access.log.*\" -mtime +\${mintime} -mtime -\${maxtime}); do echo \${i}; done"
 	ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
+		mintime=\$(expr \$(expr \$(date +%s) - \$(date -d \"\$(echo \"${four}\" | awk -F\"/\" '{print \$1 \$2 '\$(date +%Y)'}')\" +%s)) / 86400 - 2)
+		maxtime=\$(expr \$(expr \$(date +%s) - \$(date -d \"\$(echo \"${four}\" | awk -F\"/\" '{print \$1 \$2 '\$(date +%Y)'}')\" +%s)) / 86400 + 1)
 		echo -e \"\\\n\033[1;31m\"NGINX:\"\033[1;000m\\\n${sshbr}Most frequent requests\\\n\"
 				while read line
 					do awk -F\"|\" '{print \$10}' | awk '{print \$2}'
