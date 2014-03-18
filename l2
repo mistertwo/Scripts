@@ -1,6 +1,8 @@
 #!/bin/bash
 #Author: BMO and JM
 #Version: 1.0.beta
+# 1.0.b -- Fixed the Regen Config after clearing rewrites - BMO 3/18
+# 1.0.b -- Clearner output with the DNS function -BMO 3/18
 # 1.0.b -- Cleaned up a code typo with the Clear-Rewrites function. -BMO 3/18
 # 1.0.b -- Launching 1.0 Beta! -BMO 3/18
 # 0.3.9 -- Made adjustments to Slog and Slogchk to ensure compatibilty with OSX - BMO 3/17
@@ -632,7 +634,7 @@ function dns {
 	echo -e "\nDig the Domain for its DNS Records\n${br}"
 		dig ${acct} | grep -A 3 ";; ANSWER SECTION:"
 	echo -e "\nWhois to find their Name Servers\n${br}"
-		whois ${acct} | grep -iA 9 -m 1 "domain name:"
+		whois ${acct} | grep -i -e "\sdomain name:" -e "\sregistrar:" -e "\sname server:" | sort
 		ttfb
 	echo -e "\nPinging the Domain 3 times\n${br}"
 		ping -c 3 ${acct}
@@ -667,7 +669,7 @@ function clear-rewrites {
 	ssh -tq ${uname}@${acct}.wpengine.com "echo & sudo -v
 		sudo php /nas/wp/www/tools/wpe.php option-set ${acct} rewrites NULL
 			echo -e \"\\\nReloading Config to wrap it all up\\\n${ssshbr}\"
-		sudo /nas/wp/admin regen-config ${acct}
+		sudo /nas/wp/admin regen-conf ${acct}
 	exit"
 }
 #---------------------------------------------------------------------------------------------#
