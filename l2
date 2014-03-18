@@ -1,6 +1,8 @@
 #!/bin/bash
 #Author: BMO and JM
-#Version: 0.3.9
+#Version: 1.0.beta
+# 1.0.b --  Cleaned up a code typo with the Clear-Rewrites function. -BMO 3/18
+# 1.0.b -- Launching 1.0 Beta! -BMO 3/18
 # 0.3.9 -- Made adjustments to Slog and Slogchk to ensure compatibilty with OSX - BMO 3/17
 # 0.3.8 -- Added -mtime to the Find part of slog and slogchk through older logs -BMO 3/7
 # 0.3.7 -- Included the ability to check Past logs with slog and slogchk -BMO 3/6
@@ -10,8 +12,6 @@
 # 0.3.6 -- Added the DNS function - BMO 3/5
 # 0.3.6 -- Added 444 to the error www-codes array -BMO 3/5
 # 0.3.5 -- Fixed a typo in the nginx-conf function - BMO 2/27
-# 0.3.4 -- Fixed check for pod number on "htop" function - BMO 2/20
-# 0.3.3 -- Added NGINX options to "slog" and "slogchk" functions -BMO 2/19/14
 
 
 
@@ -666,7 +666,7 @@ function clear-rewrites {
 	echo -e "\nClearning out the Rewrite Rules\n${br}"
 	ssh -tq ${uname}@${acct}.wpengine.com "echo & sudo -v
 		sudo php /nas/wp/www/tools/wpe.php option-set ${acct} rewrites NULL
-			echo -e \"\\\nReloading Config to wrap it all up\\\n${ssshbr}
+			echo -e \"\\\nReloading Config to wrap it all up\\\n${ssshbr}\"
 		sudo /nas/wp/admin regen-config ${acct}
 	exit"
 }
@@ -746,7 +746,7 @@ else
 	echo -e "\nYou've already set a User Name silly.\n --> ${setname}\n"
 fi
 }
-uname=
+uname=bmoore_
 
 #################### Get Account ####################
 function account {
