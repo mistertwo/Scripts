@@ -1,6 +1,7 @@
 #!/bin/bash
 #Author: BMO and JM
-#Version: 1.0.beta
+#Version: 1.0.1
+# 1.0.1 -- Improvements to the DNS function output - BMO 3/19
 # 1.0.b -- Fixed the Regen Config after clearing rewrites - BMO 3/18
 # 1.0.b -- Clearner output with the DNS function -BMO 3/18
 # 1.0.b -- Cleaned up a code typo with the Clear-Rewrites function. -BMO 3/18
@@ -12,9 +13,6 @@
 # 0.3.6 -- Added the "bot" function - BMO 3/5
 # 0.3.6 -- Added the "uncan" function - BMO 3/5
 # 0.3.6 -- Added the DNS function - BMO 3/5
-# 0.3.6 -- Added 444 to the error www-codes array -BMO 3/5
-# 0.3.5 -- Fixed a typo in the nginx-conf function - BMO 2/27
-
 
 
 
@@ -634,7 +632,7 @@ function dns {
 	echo -e "\nDig the Domain for its DNS Records\n${br}"
 		dig ${acct} | grep -A 3 ";; ANSWER SECTION:"
 	echo -e "\nWhois to find their Name Servers\n${br}"
-		whois ${acct} | grep -i -e "\sdomain name:" -e "\sregistrar:" -e "\sname server:" | sort
+		whois ${acct} | grep -iE "^domain\sname:|^name\sserver:" | sort
 		ttfb
 	echo -e "\nPinging the Domain 3 times\n${br}"
 		ping -c 3 ${acct}

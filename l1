@@ -1,7 +1,8 @@
 #!/bin/bash
 #Author: BMO and JM
-#Version: 0.0.4
+#Version: 0.0.5
 
+# 0.0.5 -- Improvements to the DNS function output - BMO 3/19
 # 0.0.4 -- Clearner output with the DNS function -BMO 3/18
 # 0.0.3 -- Removed references to L2 script - BMO 3/17
 # 0.0.2 -- Added the logs function - BMO 3/5
@@ -409,7 +410,7 @@ function dns {
 	echo -e "\nDig the Domain for its DNS Records\n${br}"
 		dig ${acct} | grep -A 3 ";; ANSWER SECTION:"
 	echo -e "\nWhois to find their Name Servers\n${br}"
-		whois ${acct} | grep -i -e "\sdomain name:" -e "\sregistrar:" -e "\sname server:" | sort
+		whois ${acct} | grep -iE "^domain\sname:|^name\sserver:" | sort
 		ttfb
 	echo -e "\nPinging the Domain 3 times\n${br}"
 		ping -c 3 ${acct}
