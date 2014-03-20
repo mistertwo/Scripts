@@ -6,6 +6,7 @@
 #Start Synergy
 function syn-start { 
 if [[ $(hostname) = cyberlady ]]; then
+	sudo tlp start
 	synergyc -f othello &
 elif [[ $(hostname) = othello ]]; then
 	synergys -a 10.10.64.16 &
@@ -15,6 +16,7 @@ fi
 #Kill Synergy
 function syn-kill {
 if [[ $(hostname) = cyberlady ]]; then
+	sudo tlp start
 	pkill synergyc
 elif [[ $(hostname) = othello ]]; then
 	pkill synergys
