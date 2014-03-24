@@ -523,7 +523,7 @@ else
 	echo -e "\nYou've already set a User Name silly.\n --> ${setname}\n"
 fi
 }
-uname=bmoore_
+uname=
 
 #################### Get Account ####################
 function account {
