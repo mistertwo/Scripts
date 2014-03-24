@@ -549,7 +549,7 @@ fi
 
 #################### MENU ####################
 
-unction menu {
+function menu {
 while [[ -z ${one} ]]; do
 	echo -e "${br}Available tasks:\n"
 	grep -irn "^##\s" ${0} | awk '{$1=""; $2="\033[1;31m"$2"\033[1;000m"; print}' | sort
