@@ -1,7 +1,8 @@
 #!/bin/bash
 #Author: BMO and JM
-#Version: 0.0.5
-
+#Version: 0.0.6
+# 0.0.6 -- Added ability to check older logs with logs function - BMO 3/24
+# 0.0.6 -- Account check verbiage to cover Website - BMO 3/24
 # 0.0.5 -- Improvements to the DNS function output - BMO 3/19
 # 0.0.4 -- Clearner output with the DNS function -BMO 3/18
 # 0.0.3 -- Removed references to L2 script - BMO 3/17
@@ -417,14 +418,17 @@ function dns {
 }
 #---------------------------------------------------------------------------------------------#
 
-## logs => Description: Check the NGINX or Apache Access Logs
-# Usage: l1 logs <account> <service>
+## logs => Description: Print the NGINX or Apache Access Logs
+# Usage: l2 logs <account> <service> <DD/MON>
 function logs {
-	if [[ -z ${three} ]]; then
-		echo
-		read -p "Which Access Logs are you looking for - Apache or NGINX - " three
-		echo
-	fi
+if [[ -z ${three} ]] || [[ ${three} = [0-9][0-9]/[a-zA-Z][a-zA-Z][a-zA-Z] ]]; then
+	four=${three}
+	three=nginx
+fi
+if [[ -n ${four} ]]; then
+	four=$(echo ${four} | awk '{print tolower($0)}')
+fi
+if [[ -z ${four} ]] || [[ ${four} = $(date +%d/%b | awk '{print tolower($0)}') ]]; then
 	while true; do
 		if [[ ${three} = [aA]* ]]; then
 			three="apache2"
@@ -433,11 +437,39 @@ function logs {
 		fi
 		ssh -tq ${uname}@${acct}.wpengine.com "echo & sudo -v
 			sudo less /var/log/${three}/${acct}.access.log
-				echo
-				read -p \"Would you like to open the previous log? ( Y / N ) \" a
-					if [[ \${a} = [yY]* ]]; then
-						sudo less /var/log/${three}/${acct}.access.log.1
-					fi
+			echo -e \"All Done, Next up.\\\n\"
+			exit"
+	echo
+	read -p "Would you like to try the other Access Logs? ( Y / N ) " a
+		if [[ ${a} = [yY] ]]; then
+			if [[ ${three} = [nN]* ]]; then
+				three="apache2"
+			elif [[ ${three} = [aA]* ]]; then
+				three="nginx"
+			fi
+		else
+			echo & exit
+		fi
+	done
+else
+	while true; do
+		if [[ ${three} = [aA]* ]]; then
+			three="apache2"
+		elif [[ ${three} = [nN]* ]]; then
+			three="nginx"
+		fi
+	read -p "Just Look or Save to file? " opt
+		if [[ ${opt} = [sS]* ]]; then
+			opt="> /nas/wp/www/sites/${acct}/_wpeprivate/${acct}.${three}.${epoch}.log"
+		else
+			opt="| less"
+		fi
+	log="for i in \$(sudo find /var/log/${three}/ -maxdepth 1 -type f -iname \"${acct}.access.log.*\" -mtime +\${mintime} -mtime -\${maxtime}); do echo \${i}; done"
+	ssh -tq ${uname}@${acct}.wpengine.com "echo & sudo -v
+		mintime=\$(expr \$(expr \$(date +%s) - \$(date -d \"\$(echo \"${four}\" | awk -F\"/\" '{print \$1 \$2 '\$(date +%Y)'}')\" +%s)) / 86400 - 2)
+		maxtime=\$(expr \$(expr \$(date +%s) - \$(date -d \"\$(echo \"${four}\" | awk -F\"/\" '{print \$1 \$2 '\$(date +%Y)'}')\" +%s)) / 86400 + 1)
+				sudo zcat -f \$(${log}) | grep -i ${four} ${opt}
+				echo -e \"All Done, Next up.\\\n\"
 		exit"
 	echo
 	read -p "Would you like to try the other Access Logs? ( Y / N ) " a
@@ -451,6 +483,7 @@ function logs {
 			echo & exit
 		fi
 	done
+fi
 }
 #---------------------------------------------------------------------------------------------#
 #################### Determine Environment ####################
@@ -490,13 +523,18 @@ else
 	echo -e "\nYou've already set a User Name silly.\n --> ${setname}\n"
 fi
 }
-uname=
+uname=bmoore_
 
 #################### Get Account ####################
 function account {
 if [[ -z ${acct} ]]; then
-	echo && read -p "What Account are we working with? " acct
-	pod
+	if [[ ${one} = dns ]] || [[ ${one} = ttfb ]]; then
+		echo && read -p "What Website are we working with? " acct
+		pod
+	else
+		echo && read -p "What Account are we working with? " acct
+		pod
+	fi
 fi
 }
 
@@ -511,24 +549,25 @@ fi
 
 #################### MENU ####################
 
-function menu {
-while [[ -z ${opt} ]]; do
+unction menu {
+while [[ -z ${one} ]]; do
 	echo -e "${br}Available tasks:\n"
 	grep -irn "^##\s" ${0} | awk '{$1=""; $2="\033[1;31m"$2"\033[1;000m"; print}' | sort
 	echo -e ${br}
-	read -p "Type function name that you wish to use ( X to exit ): " opt
+	read -p "Type function name that you wish to use ( X to exit ): " one
 	echo
-if [[ ${opt} = [xX] ]]; then
+if [[ ${one} = [xX] ]]; then
 	exit 0
 else
 account
-declare -F ${opt} &>/dev/null && echo && ${opt} && echo && exit 0 || echo -e "${opt}\nYou Didn't do it right! Try again.\n"; opt=""
+declare -F ${one} &>/dev/null && echo && ${one} && echo && exit 0 || echo -e "${one}\nYou Didn't do it right! Try again.\n"; one=""
 fi
 done
 }
 
 #################### RUN IT ####################
 
+one=${1}
 acct=${2}
 three=${3}
 four=${4}
@@ -539,20 +578,20 @@ epoch=$(date +%s)
 if [[ -z ${uname} ]]; then
 	setuname
 else
-	if [[ -n ${1} ]]; then
+	if [[ -n ${one} ]]; then
 		echo -e "\nYour current username is set to: \033[1;31m"${uname}"\033[1;000m"
 		account
-		declare -F ${1} &>/dev/null && echo && ${1} && echo && exit 0 || 
-		echo -e "\n\033[1;31m"Looks like you entered the wrong function."\033[1;000m\n\nUsage is: l1 <function> <account> <optional argument>\n"
+		declare -F ${one} &>/dev/null && echo && ${one} && echo && exit 0 || 
+		echo -e "\n\033[1;31m"Looks like you entered the wrong function."\033[1;000m\n\nUsage is: l2 <function> <account> <optional argument>\n"
 		acct=
 		three=
 		four=
 		five=
 		menu
-	elif [[ ${1} = uname ]]; then
+	elif [[ ${one} = uname ]]; then
 		setuname
 	else
-		echo -e "\nUsage is: l1 <function> <account> <optional argument>\n"
+		echo -e "\nUsage is: l2 <function> <account> <optional argument>\n"
 		acct=
 		three=
 		four=
