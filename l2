@@ -1,6 +1,7 @@
 #!/bin/bash
 #Author: BMO and JM
 #Version: 1.0.2
+# 1.0.3 -- Added Install Instructions - BMO 3/24
 # 1.0.2 -- Added ability to check older logs with logs function - BMO 3/24
 # 1.0.2 -- Account check verbiage to cover Website - BMO 3/24
 # 1.0.1 -- Improvements to the DNS function output - BMO 3/19
@@ -16,6 +17,13 @@
 # 0.3.6 -- Added the "uncan" function - BMO 3/5
 # 0.3.6 -- Added the DNS function - BMO 3/5
 
+#################### Install ####################
+### For Macs ###
+#sudo curl -k -3 https://raw.githubusercontent.com/bmo-tv/Scripts/master/l2 -o /usr/sbin/l2 && sudo chown root:wheel /usr/sbin/l2 && sudo chmod +x /usr/sbin/l2 && sudo l2 && l2
+#
+### For Linux ###
+#sudo curl -k -3 https://raw.githubusercontent.com/bmo-tv/Scripts/master/l2 -o /usr/sbin/l2 && sudo chown root:root /usr/sbin/l2 && sudo chmod +x /usr/sbin/l2 && sudo l2 && l2
+#
 
 
 
