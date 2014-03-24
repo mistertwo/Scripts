@@ -14,10 +14,10 @@
 
 #################### Install ####################
 ### For Macs ###
-#sudo curl -k -3 https://raw.githubusercontent.com/bmo-tv/Scripts/master/l2 -o /usr/sbin/l2 && sudo chown root:wheel /usr/sbin/l2 && sudo chmod +x /usr/sbin/l2 && sudo l2 && l2
+#sudo curl -k -3 https://raw.githubusercontent.com/bmo-tv/Scripts/master/l1 -o /usr/sbin/l1 && sudo chown root:wheel /usr/sbin/l1 && sudo chmod +x /usr/sbin/l1 && sudo l1 && l1
 #
 ### For Linux ###
-#sudo curl -k -3 https://raw.githubusercontent.com/bmo-tv/Scripts/master/l2 -o /usr/sbin/l2 && sudo chown root:root /usr/sbin/l2 && sudo chmod +x /usr/sbin/l2 && sudo l2 && l2
+#sudo curl https://raw.githubusercontent.com/bmo-tv/Scripts/master/l1 -o /usr/sbin/l1 && sudo chown root:root /usr/sbin/l1 && sudo chmod +x /usr/sbin/l1 && sudo l1 && l1
 #
 
 
