@@ -1,6 +1,8 @@
 #!/bin/bash
 #Author: BMO and JM
-#Version: 0.0.6
+#Version: 0.0.7
+# 0.0.7 -- Better file name when saving logs into customers _wpeprivate folder - BMO 3/25
+# 0.0.7 -- Fixed the save section in the Logs function - BMO 3/25
 # 0.0.6 -- Added Install Instructions - BMO 3/24
 # 0.0.6 -- Added ability to check older logs with logs function - BMO 3/24
 # 0.0.6 -- Account check verbiage to cover Website - BMO 3/24
@@ -8,8 +10,6 @@
 # 0.0.4 -- Clearner output with the DNS function -BMO 3/18
 # 0.0.3 -- Removed references to L2 script - BMO 3/17
 # 0.0.2 -- Added the logs function - BMO 3/5
-# 0.0.2 -- Added the DNS function - BMO 3/5
-# 0.0.2 -- Added 444 to the error www-codes array -BMO 3/5
 
 
 #################### Install ####################
@@ -464,6 +464,7 @@ if [[ -z ${four} ]] || [[ ${four} = $(date +%d/%b | awk '{print tolower($0)}') ]
 		fi
 	done
 else
+	date=$(date +%d-%b | awk '{print tolower($0)}')
 	while true; do
 		if [[ ${three} = [aA]* ]]; then
 			three="apache2"
@@ -472,7 +473,7 @@ else
 		fi
 	read -p "Just Look or Save to file? " opt
 		if [[ ${opt} = [sS]* ]]; then
-			opt="> /nas/wp/www/sites/${acct}/_wpeprivate/${acct}.${three}.${epoch}.log"
+			opt="> ${acct}.${three}.${date}.log | sudo mv ${acct}.${three}.${date}.log /nas/wp/www/sites/${acct}/_wpeprivate/${acct}.${three}.${date}.log"
 		else
 			opt="| less"
 		fi

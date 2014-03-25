@@ -1,7 +1,9 @@
 #!/bin/bash
 #Author: BMO and JM
-#Version: 1.0.2
-# 1.0.3 -- Added Install Instructions - BMO 3/24
+#Version: 1.0.3
+# 1.0.3 -- Better file name when saving logs into customers _wpeprivate folder - BMO 3/25
+# 1.0.3 -- Fixed the save section in the Logs function - BMO 3/25
+# 1.0.2 -- Added Install Instructions - BMO 3/24
 # 1.0.2 -- Added ability to check older logs with logs function - BMO 3/24
 # 1.0.2 -- Account check verbiage to cover Website - BMO 3/24
 # 1.0.1 -- Improvements to the DNS function output - BMO 3/19
@@ -11,11 +13,7 @@
 # 1.0.b -- Launching 1.0 Beta! -BMO 3/18
 # 0.3.9 -- Made adjustments to Slog and Slogchk to ensure compatibilty with OSX - BMO 3/17
 # 0.3.8 -- Added -mtime to the Find part of slog and slogchk through older logs -BMO 3/7
-# 0.3.7 -- Included the ability to check Past logs with slog and slogchk -BMO 3/6
-# 0.3.6 -- Added the "logs" function - BMO 3/5
-# 0.3.6 -- Added the "bot" function - BMO 3/5
-# 0.3.6 -- Added the "uncan" function - BMO 3/5
-# 0.3.6 -- Added the DNS function - BMO 3/5
+
 
 #################### Install ####################
 ### For Macs ###
@@ -244,7 +242,7 @@ ssh -tq ${uname}@${acct}.wpengine.com "if [[ ! -f /nas/wp/conf/lb/sites/${acct}.
 	then echo -e \"\\\nNo File, maybe you typed the account wrong?\"
 		exit
     else
-    	cat /nas/wp/conf/lb/sites/${acct}.conf
+    	less /nas/wp/conf/lb/sites/${acct}.conf
     exit
 	fi"
 }
@@ -716,6 +714,7 @@ if [[ -z ${four} ]] || [[ ${four} = $(date +%d/%b | awk '{print tolower($0)}') ]
 		fi
 	done
 else
+	date=$(date +%d-%b | awk '{print tolower($0)}')
 	while true; do
 		if [[ ${three} = [aA]* ]]; then
 			three="apache2"
@@ -724,7 +723,7 @@ else
 		fi
 	read -p "Just Look or Save to file? " opt
 		if [[ ${opt} = [sS]* ]]; then
-			opt="> /nas/wp/www/sites/${acct}/_wpeprivate/${acct}.${three}.${epoch}.log"
+			opt="> ${acct}.${three}.${date}.log | sudo mv ${acct}.${three}.${date}.log /nas/wp/www/sites/${acct}/_wpeprivate/${acct}.${three}.${date}.log"
 		else
 			opt="| less"
 		fi
