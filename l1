@@ -1,6 +1,8 @@
 #!/bin/bash
 #Author: BMO and JM
-#Version: 0.0.7
+#Version: 0.0.8
+# 0.0.8 -- Check on the slog and slogchk input to make sure a Time Frame is entered -BMO 3/31
+# 0.0.8 -- slog function was searching both NGINX and apachstyle NGINX logs, fixed -BMO 3/31
 # 0.0.7 -- Better file name when saving logs into customers _wpeprivate folder - BMO 3/25
 # 0.0.7 -- Fixed the save section in the Logs function - BMO 3/25
 # 0.0.6 -- Added Install Instructions - BMO 3/24
@@ -238,47 +240,73 @@ function find {
 # Usage: l1 slog <account> <HH:MM>
 # Example l1 slog wpengine 14:25
 function slog {
-	if [[ -z ${three} ]]; then
-		read -p "What Time (UTC) would you like to Check? HH:MM - " three
-	fi
-year=$(date +%Y)
-hour=$(echo ${three} | awk -F':' '{print $1}')
-min=$(echo ${three} | awk -F':' '{print $2}')
+if [[ -z ${three} ]]; then
+	read -p "What Time (UTC) would you like to Check? HH:MM - " three
+		echo
+	read -p "What Date would you like to check? DD/MON - (Enter for Today)" four
+fi
+while [[ ${three} != [0-9][0-9]:[0-9][0-9] ]]; do
+	echo
+		read -p "You didn't select the proper time, try again please HH:MM - " three
+	echo
+done
+	year=$(date +%Y)
+	hour=$(echo ${three} | awk -F':' '{print $1}')
+	min=$(echo ${three} | awk -F':' '{print $2}')
 if (( ${min} <= 14 )); then
- 	hhmm="${year}:${hour}:(0[0-9]|1[0-4])"
- elif (( ${min} > 14 )) && (( ${min} <= 29 )); then
- 	hhmm="${year}:${hour}:(1[5-9]|2[0-9])"
- elif (( ${min} > 29 )) && (( ${min} <= 44 )); then
- 	hhmm="${year}:${hour}:(3[0-9]|4[0-4])"
- elif (( ${min} > 44 )) && (( ${min} <= 59 )); then
- 	hhmm="${year}:${hour}:(4[5-9]|5[0-9])"
- fi
- pod
- if [[ -n ${pod} ]]; then
+	hhmm="${year}:${hour}:(0[0-9]|1[0-4])"
+elif (( ${min} > 14 )) && (( ${min} <= 29 )); then
+	hhmm="${year}:${hour}:(1[5-9]|2[0-9])"
+elif (( ${min} > 29 )) && (( ${min} <= 44 )); then
+	hhmm="${year}:${hour}:(3[0-9]|4[0-4])"
+elif (( ${min} > 44 )) && (( ${min} <= 59 )); then
+	hhmm="${year}:${hour}:(4[5-9]|5[0-9])"
+fi
+ 	pod
+if [[ -n ${pod} ]]; then
 	acct=${pod}
- fi
-ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
-	echo -e \"\\\n${sshbr}\033[1;31m\"NGINX\"\033[1;000m log counts for ${hhmm}:\\\n\\\nHits - Account\"
-		for log in \$(sudo find /var/log/nginx/ -maxdepth 1 -type f ! -name *staging* ! -name *gz ! -name *1)
-			do echo \$(sudo grep -E \"${hhmm}\" \${log} | wc -l) - \$(echo \${log} | awk -F'/' '{print \$5}' | awk -F'.' '{print \$1}') | grep -v ^0
-		done | sort -nk1 | tail
-	echo -e \"\\\n${sshbr}\033[1;31m\"Apache\"\033[1;000m log counts for ${hhmm}:\\\n\\\nHits - Account\"
-		for log in \$(sudo find /var/log/apache2/ -maxdepth 1 -type f ! -name *staging* ! -name *gz ! -name *1)
-			do echo \$(sudo grep -E \"${hhmm}\" \${log} | wc -l) - \$(echo \${log} | awk -F'/' '{print \$5}' | awk -F'.' '{print \$1}') | grep -v ^0
-		done | sort -nk1 | tail
+fi
+if [[ -n ${four} ]]; then
+	four=$(echo ${four} | awk '{print tolower($0)}')
+fi
+if [[ -z ${four} ]] || [[ ${four} = $(date +%d/%b | awk '{print tolower($0)}') ]]; then
+	ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
+		echo -e \"\\\n${sshbr}\033[1;31m\"NGINX\"\033[1;000m log counts for ${hhmm}:\\\n\\\nHits - Account\"
+			for log in \$(sudo find /var/log/nginx/ -maxdepth 1 -type f ! -name *staging* ! -name *apache* ! -name *gz ! -name *1)
+				do echo \$(sudo grep -E \"${hhmm}\" \${log} | wc -l) - \$(echo \${log} | awk -F'/' '{print \$5}' | awk -F'.' '{print \$1}') | grep -v ^0
+			done | sort -nk1 | tail
+		echo -e \"\\\n${sshbr}\033[1;31m\"Apache\"\033[1;000m log counts for ${hhmm}:\\\n\\\nHits - Account\"
+			for log in \$(sudo find /var/log/apache2/ -maxdepth 1 -type f ! -name *staging* ! -name *gz ! -name *1)
+				do echo \$(sudo grep -E \"${hhmm}\" \${log} | wc -l) - \$(echo \${log} | awk -F'/' '{print \$5}' | awk -F'.' '{print \$1}') | grep -v ^0
+			done | sort -nk1 | tail
 	exit"
+else
+	echo -e "\n\033[1;31m\"THIS IS GOING TO TAKE SOME TIME\"\033[1;000m"
+	ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
+		mintime=\$(expr \$(expr \$(date +%s) - \$(date -d \"\$(echo \"${four}\" | awk -F\"/\" '{print \$1 \$2 '\$(date +%Y)'}')\" +%s)) / 86400 - 2)
+		maxtime=\$(expr \$(expr \$(date +%s) - \$(date -d \"\$(echo \"${four}\" | awk -F\"/\" '{print \$1 \$2 '\$(date +%Y)'}')\" +%s)) / 86400 + 1)
+		echo -e \"\\\n${sshbr}\033[1;31m\"NGINX\"\033[1;000m log counts:\\\n\\\nHits - Account\"
+			for log in \$(sudo find /var/log/nginx/ -maxdepth 1 -type f ! -name *apache* ! -name *staging* ! -name *.log -mtime +\${mintime} -mtime -\${maxtime})
+				do echo \$(sudo zcat -f \${log} | grep -i ${four} | grep -E \"${hhmm}\" | wc -l) - \$(echo \${log} | awk -F'/' '{print \$5}' | awk -F'.' '{print \$1}') | grep -v ^0
+			done | sort -nk1 | tail
+		echo -e \"\\\n${sshbr}\033[1;31m\"Apache\"\033[1;000m log counts:\\\n\\\nHits - Account\"
+			for log in \$(sudo find /var/log/apache2/ -maxdepth 1 -type f ! -name *staging* ! -name *.log ! -name *error* -mtime +\${mintime} -mtime -\${maxtime})
+				do echo \$(sudo zcat -f \${log} | grep -i ${four} | grep -E \"${hhmm}\" | wc -l) - \$(echo \${log} | awk -F'/' '{print \$5}' | awk -F'.' '{print \$1}') | grep -v ^0
+			done | sort -nk1 | tail
+	exit"
+fi
 echo -e "\n${br}"
  read -p "Which Account's log would you like to check? X to quit - " a
  echo
- 	if [[ ${a} = [Xx] ]]; then
- 		exit
- 	else
- 		while [[ ${a} = [a-zA-Z][a-zA-Z0-9]* ]]; do
-			acct=${a}
-			slogchk
-			read -p "Check Another Account? \"account name\" or X - " a
-		done
- 	fi
+ if [[ ${a} = [Xx] ]]; then
+ 	exit
+ else
+ 	while [[ ${a} = [a-zA-Z][a-zA-Z0-9]* ]]; do
+		acct=${a}
+		slogchk
+		read -p "Check Another Account? \"account name\" or X - " a
+	done
+ fi
  }
 #---------------------------------------------------------------------------------------------#
 
@@ -286,46 +314,82 @@ echo -e "\n${br}"
 # Usage: l1 slogchk <account> <HH:MM>
 # Example l1 slogchk wpengine 14:25
 function slogchk {
-year=$(date +%Y)
 	if [[ -z ${three} ]] && [[ -z ${hhmm} ]]; then
 		read -p "What Time (UTC) would you like to Check? HH:MM - " three
 	fi
+	while [[ ${three} != [0-9][0-9]:[0-9][0-9] ]]; do
+		echo
+			read -p "You didn't select the proper time, try again please HH:MM - " three
+		echo
+	done
 year=$(date +%Y)
 hour=$(echo ${three} | awk -F':' '{print $1}')
 min=$(echo ${three} | awk -F':' '{print $2}')
 if (( ${min} <= 14 )); then
  	hhmm="${year}:${hour}:(0[0-9]|1[0-4])"
- elif (( ${min} > 14 )) && (( ${min} <= 29 )); then
+elif (( ${min} > 14 )) && (( ${min} <= 29 )); then
  	hhmm="${year}:${hour}:(1[5-9]|2[0-9])"
- elif (( ${min} > 29 )) && (( ${min} <= 44 )); then
- 	hhmm="${year}:${hour}:(3[0-9]|4[0-4])"
- elif (( ${min} > 44 )) && (( ${min} <= 59 )); then
+elif (( ${min} > 29 )) && (( ${min} <= 44 )); then
+	hhmm="${year}:${hour}:(3[0-9]|4[0-4])"
+elif (( ${min} > 44 )) && (( ${min} <= 59 )); then
  	hhmm="${year}:${hour}:(4[5-9]|5[0-9])"
- fi
-alog="/var/log/apache2/${acct}.access.log"
-nlog="/var/log/nginx/${acct}.access.log" 
-ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
-	echo -e \"\\\n\033[1;31m\"NGINX:\"\033[1;000m\\\n${sshbr}Most frequent requests\\\n\"
-		while read line
-			do awk -F\"|\" '{print \$10}' | awk '{print \$2}'
-		done < <(sudo grep -E \"${hhmm}\" ${nlog})| sort | uniq -c | sort -nk1 | tail -5
-	echo -e \"\\\n${sshbr}Most frequent IP's\\\n\"
-		while read line
-			do awk -F\"|\" '{print \$3}' | sort | uniq -c | sort -nk1 | tail -5
-		done < <(sudo grep -E \"${hhmm}\" ${nlog})
-	echo -e \"\\\n${sshbr}Last 20 Hits to Log\\\n\"
-		sudo tail -n 20 ${nlog}
-	echo -e \"\\\n\033[1;31m\"APACHE:\"\033[1;000m\\\n${sshbr}Most frequent requests\\\n\"
-		while read line
-			do awk '{print \$1,\$4\"]\",\$5,\$6,\$7,\$8}'
-		done < <(sudo grep -E \"${hhmm}\" ${alog})| grep -oP '(?<=\\\").*(?=\\\")' | sort | uniq -c | sort -nk1 | tail -5
-	echo -e \"\\\n${sshbr}Most frequent IP's\\\n\"
-		while read line
-			do awk '{print \$1}' | sort | uniq -c | sort -nk1 | tail -5
-		done < <(sudo grep -E \"${hhmm}\" ${alog})
-	echo -e \"\\\n${sshbr}Last 20 Hits to Log\\\n\"
-		sudo tail -n 20 ${alog}
-exit"
+fi
+if [[ -n ${four} ]]; then
+ 	four=$(echo ${four} | awk '{print tolower($0)}')
+fi
+if [[ -z ${four} ]] || [[ ${four} = $(date +%d/%b | awk '{print tolower($0)}') ]]; then
+	alog="/var/log/apache2/${acct}.access.log"
+	nlog="/var/log/nginx/${acct}.access.log" 
+	ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
+		echo -e \"\\\n\033[1;31m\"NGINX:\"\033[1;000m\\\n${sshbr}Most frequent requests\\\n\"
+			while read line
+				do awk -F\"|\" '{print \$10}' | awk '{print \$2}'
+			done < <(sudo grep -E \"${hhmm}\" ${nlog})| sort | uniq -c | sort -nk1 | tail -5
+		echo -e \"\\\n${sshbr}Most frequent IP's\\\n\"
+			while read line
+				do awk -F\"|\" '{print \$3}' | sort | uniq -c | sort -nk1 | tail -5
+			done < <(sudo grep -E \"${hhmm}\" ${nlog})
+		echo -e \"\\\n${sshbr}Last 20 Hits to Log\\\n\"
+			sudo grep -E \"${hhmm}\" ${nlog} | tail -n 20
+		echo -e \"\\\n\033[1;31m\"APACHE:\"\033[1;000m\\\n${sshbr}Most frequent requests\\\n\"
+			while read line
+				do awk '{print \$1,\$4\"]\",\$5,\$6,\$7,\$8}'
+			done < <(sudo grep -E \"${hhmm}\" ${alog})| grep -oP '(?<=\\\").*(?=\\\")' | sort | uniq -c | sort -nk1 | tail -5
+		echo -e \"\\\n${sshbr}Most frequent IP's\\\n\"
+			while read line
+				do awk '{print \$1}' | sort | uniq -c | sort -nk1 | tail -5
+			done < <(sudo grep -E \"${hhmm}\" ${alog})
+		echo -e \"\\\n${sshbr}Last 20 Hits to Log\\\n\"
+			sudo grep -E \"${hhmm}\" ${alog} | tail -n 20
+	exit"
+else
+	alog="for i in \$(sudo find /var/log/apache2/ -maxdepth 1 -type f -iname \"${acct}.access.log.*\" -mtime +\${mintime} -mtime -\${maxtime}); do echo \${i}; done"
+	nlog="for i in \$(sudo find /var/log/nginx/ -maxdepth 1 -type f -iname \"${acct}.access.log.*\" -mtime +\${mintime} -mtime -\${maxtime}); do echo \${i}; done"
+	ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
+		mintime=\$(expr \$(expr \$(date +%s) - \$(date -d \"\$(echo \"${four}\" | awk -F\"/\" '{print \$1 \$2 '\$(date +%Y)'}')\" +%s)) / 86400 - 2)
+		maxtime=\$(expr \$(expr \$(date +%s) - \$(date -d \"\$(echo \"${four}\" | awk -F\"/\" '{print \$1 \$2 '\$(date +%Y)'}')\" +%s)) / 86400 + 1)
+		echo -e \"\\\n\033[1;31m\"NGINX:\"\033[1;000m\\\n${sshbr}Most frequent requests\\\n\"
+				while read line
+					do awk -F\"|\" '{print \$10}' | awk '{print \$2}'
+				done < <(sudo zcat -f \$(${nlog}) | grep -i ${four} | grep -E \"${hhmm}\")| sort | uniq -c | sort -nk1 | tail -5
+			echo -e \"\\\n${sshbr}Most frequent IP's\\\n\"
+				while read line
+					do awk -F\"|\" '{print \$3}' | sort | uniq -c | sort -nk1 | tail -5
+				done < <(sudo zcat -f \$(${nlog}) | grep -i ${four} | grep -E \"${hhmm}\")
+			echo -e \"\\\n${sshbr}Last 20 Hits to Log\\\n\"
+				sudo zcat -f \$(${nlog}) | grep -i ${four} | grep -E \"${hhmm}\" | tail -n 20
+			echo -e \"\\\n\033[1;31m\"APACHE:\"\033[1;000m\\\n${sshbr}Most frequent requests\\\n\"
+				while read line
+					do awk '{print \$1,\$4\"]\",\$5,\$6,\$7,\$8}'
+				done < <(sudo zcat -f \$(${alog}) | grep -i ${four} | grep -E \"${hhmm}\")| grep -oP '(?<=\\\").*(?=\\\")' | sort | uniq -c | sort -nk1 | tail -5
+			echo -e \"\\\n${sshbr}Most frequent IP's\\\n\"
+				while read line
+					do awk '{print \$1}' | sort | uniq -c | sort -nk1 | tail -5
+				done < <(sudo zcat -f \$(${alog}) | grep -i ${four} | grep -E \"${hhmm}\")
+			echo -e \"\\\n${sshbr}Last 20 Hits to Log\\\n\"
+				sudo zcat -f \$(${alog}) | grep -i ${four} | grep -E \"${hhmm}\" | tail -n 20
+	exit"
+fi
 echo -e "\n${br}"
 }
 #---------------------------------------------------------------------------------------------#

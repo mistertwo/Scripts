@@ -1,6 +1,9 @@
 #!/bin/bash
 #Author: BMO and JM
-#Version: 1.0.3
+#Version: 1.0.5
+# 1.0.5 -- Check on the slog and slogchk input to make sure a Time Frame is entered -BMO 3/31
+# 1.0.5 -- slog function was searching both NGINX and apachstyle NGINX logs, fixed -BMO 3/31
+# 1.0.4 -- Output a time warning for the sql-slow "heavey rows" section -BMO 3/26
 # 1.0.3 -- Better file name when saving logs into customers _wpeprivate folder - BMO 3/25
 # 1.0.3 -- Fixed the save section in the Logs function - BMO 3/25
 # 1.0.2 -- Added Install Instructions - BMO 3/24
@@ -12,7 +15,6 @@
 # 1.0.b -- Cleaned up a code typo with the Clear-Rewrites function. -BMO 3/18
 # 1.0.b -- Launching 1.0 Beta! -BMO 3/18
 # 0.3.9 -- Made adjustments to Slog and Slogchk to ensure compatibilty with OSX - BMO 3/17
-# 0.3.8 -- Added -mtime to the Find part of slog and slogchk through older logs -BMO 3/7
 
 
 #################### Install ####################
@@ -137,7 +139,7 @@ ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
 		sudo awk '/User@Host/ {print \$3}' /var/log/mysql/mysql-slow.log| cut -d\[ -f1| sort| uniq -c| sort -nk1| tail -10
 	echo -e ${sshbr}\"Count of which PHP lines that created slow queries: \\n\"
 		sudo grep -oP '(?<=\[\/nas\/wp\/www\/cluster\-).*(?=\])' /var/log/mysql/mysql-slow.log| sort| uniq -c| sort -nk1| tail -10
-	echo -e ${sshbr}\"Heavy SQL Tables based on table size vs. table rows: \\n\"
+	echo -e \"\\\n\033[1;31m(This could take some time)\033[1;00m\\\n${sshbr}Heavy SQL Tables based on table size vs. table rows: \\n\"
 		sudo mysql -e \"select concat(table_schema, '.', table_name), concat(round(table_rows / 1000000, 2), 'M') rows, concat(round(data_length / ( 1024 * 1024 * 1024 ), 2), 'G') DATA, concat(round(index_length / ( 1024 * 1024 * 1024 ), 2), 'G') idx, concat(round(( data_length + index_length ) / ( 1024 * 1024 * 1024 ), 2), 'G') total_size, round(index_length / data_length, 2) idxfrac from information_schema.TABLES ORDER by data_length + index_length DESC limit 10;\"
 	echo -e ${sshbr}
 exit"
@@ -388,34 +390,39 @@ function duplicity {
 # Usage: l2 slog <account> <HH:MM> <DD/MONTH>
 # Example l2 slog wpengine 14:25 02/Mar
 function slog {
-	if [[ -z ${three} ]]; then
-		read -p "What Time (UTC) would you like to Check? HH:MM - " three
+if [[ -z ${three} ]]; then
+	read -p "What Time (UTC) would you like to Check? HH:MM - " three
 		echo
-		read -p "What Date would you like to check? DD/MON - " four
-	fi
-year=$(date +%Y)
-hour=$(echo ${three} | awk -F':' '{print $1}')
-min=$(echo ${three} | awk -F':' '{print $2}')
+	read -p "What Date would you like to check? DD/MON - (Enter for Today)" four
+fi
+while [[ ${three} != [0-9][0-9]:[0-9][0-9] ]]; do
+	echo
+		read -p "You didn't select the proper time, try again please HH:MM - " three
+	echo
+done
+	year=$(date +%Y)
+	hour=$(echo ${three} | awk -F':' '{print $1}')
+	min=$(echo ${three} | awk -F':' '{print $2}')
 if (( ${min} <= 14 )); then
- 	hhmm="${year}:${hour}:(0[0-9]|1[0-4])"
- elif (( ${min} > 14 )) && (( ${min} <= 29 )); then
- 	hhmm="${year}:${hour}:(1[5-9]|2[0-9])"
- elif (( ${min} > 29 )) && (( ${min} <= 44 )); then
- 	hhmm="${year}:${hour}:(3[0-9]|4[0-4])"
- elif (( ${min} > 44 )) && (( ${min} <= 59 )); then
- 	hhmm="${year}:${hour}:(4[5-9]|5[0-9])"
- fi
- pod
- if [[ -n ${pod} ]]; then
+	hhmm="${year}:${hour}:(0[0-9]|1[0-4])"
+elif (( ${min} > 14 )) && (( ${min} <= 29 )); then
+	hhmm="${year}:${hour}:(1[5-9]|2[0-9])"
+elif (( ${min} > 29 )) && (( ${min} <= 44 )); then
+	hhmm="${year}:${hour}:(3[0-9]|4[0-4])"
+elif (( ${min} > 44 )) && (( ${min} <= 59 )); then
+	hhmm="${year}:${hour}:(4[5-9]|5[0-9])"
+fi
+ 	pod
+if [[ -n ${pod} ]]; then
 	acct=${pod}
- fi
- if [[ -n ${four} ]]; then
- 	four=$(echo ${four} | awk '{print tolower($0)}')
- fi
- if [[ -z ${four} ]] || [[ ${four} = $(date +%d/%b | awk '{print tolower($0)}') ]]; then
+fi
+if [[ -n ${four} ]]; then
+	four=$(echo ${four} | awk '{print tolower($0)}')
+fi
+if [[ -z ${four} ]] || [[ ${four} = $(date +%d/%b | awk '{print tolower($0)}') ]]; then
 	ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
 		echo -e \"\\\n${sshbr}\033[1;31m\"NGINX\"\033[1;000m log counts for ${hhmm}:\\\n\\\nHits - Account\"
-			for log in \$(sudo find /var/log/nginx/ -maxdepth 1 -type f ! -name *staging* ! -name *gz ! -name *1)
+			for log in \$(sudo find /var/log/nginx/ -maxdepth 1 -type f ! -name *staging* ! -name *apache* ! -name *gz ! -name *1)
 				do echo \$(sudo grep -E \"${hhmm}\" \${log} | wc -l) - \$(echo \${log} | awk -F'/' '{print \$5}' | awk -F'.' '{print \$1}') | grep -v ^0
 			done | sort -nk1 | tail
 		echo -e \"\\\n${sshbr}\033[1;31m\"Apache\"\033[1;000m log counts for ${hhmm}:\\\n\\\nHits - Account\"
@@ -457,10 +464,14 @@ echo -e "\n${br}"
 # Usage: l2 slogchk <account> <HH:MM> <DD/MON>
 # Example l2 slogchk wpengine 14:25 04/Mar
 function slogchk {
-year=$(date +%Y)
 	if [[ -z ${three} ]] && [[ -z ${hhmm} ]]; then
 		read -p "What Time (UTC) would you like to Check? HH:MM - " three
 	fi
+	while [[ ${three} != [0-9][0-9]:[0-9][0-9] ]]; do
+		echo
+			read -p "You didn't select the proper time, try again please HH:MM - " three
+		echo
+	done
 year=$(date +%Y)
 hour=$(echo ${three} | awk -F':' '{print $1}')
 min=$(echo ${three} | awk -F':' '{print $2}')
