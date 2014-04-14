@@ -1,6 +1,9 @@
 #!/bin/bash
 #Author: BMO and JM
-#Version: 1.0.5
+#Version: 1.0.6
+# 1.0.6 -- Added the Stage-Backup function -BMO 4/14
+# 1.0.6 -- Added the Update function - BMO 4/14
+# 1.0.6 -- Added the ability to set the Uname at any time - BMO 4/14
 # 1.0.5 -- Check on the slog and slogchk input to make sure a Time Frame is entered -BMO 3/31
 # 1.0.5 -- slog function was searching both NGINX and apachstyle NGINX logs, fixed -BMO 3/31
 # 1.0.4 -- Output a time warning for the sql-slow "heavey rows" section -BMO 3/26
@@ -10,12 +13,9 @@
 # 1.0.2 -- Added ability to check older logs with logs function - BMO 3/24
 # 1.0.2 -- Account check verbiage to cover Website - BMO 3/24
 # 1.0.1 -- Improvements to the DNS function output - BMO 3/19
-# 1.0.b -- Fixed the Regen Config after clearing rewrites - BMO 3/18
-# 1.0.b -- Clearner output with the DNS function -BMO 3/18
-# 1.0.b -- Cleaned up a code typo with the Clear-Rewrites function. -BMO 3/18
-# 1.0.b -- Launching 1.0 Beta! -BMO 3/18
-# 0.3.9 -- Made adjustments to Slog and Slogchk to ensure compatibilty with OSX - BMO 3/17
 
+#################### To-Do ####################
+# Rework the Mig-All function
 
 #################### Install ####################
 ### For Macs ###
@@ -761,6 +761,19 @@ fi
 }
 #---------------------------------------------------------------------------------------------#
 
+## stage-backup => Description: Backup the Staging Site
+# Usage: l2 stage-backup <account>
+function stage-backup {
+	ssh -tq ${uname}@${acct}.wpengine.com "sudo -v; cd /nas/wp/www/staging/${acct}
+		mysqldump -u ${acct} -p\$(cat wp-config.php | grep \"define('DB_PASSWORD\" |  awk -F\"'\" '{print \$4}') snapshot_${acct} > mysql_$(date +%M).sql
+		if (( \$(df | grep /dev/xvda | awk '{print \$4}') < \$(tar cf - * | wc -c) * 5 ))
+			then sudo tar -cvzf /nas/wp/www/sites/${acct}/_wpeprivate/${acct}-staging-\$(date +%H_%M).tar.gz --exclude wp-admin --exclude wp-includes *
+			rm -f mysql_$(date +%M).sql
+		else echo -e \"\\\nIt seems that the size of this backup is larger than the Available Disk.\\\n\\\nDisk Space - \$(df -h | grep /dev/xvda | awk '{print \$4}')\\\n\\\nSize of the Backup ~ \$(expr \$(expr \$(tar cf - * | wc -c) \* 5) / 1048576)Mb\\\n\\\n\"
+		fi"
+}
+#---------------------------------------------------------------------------------------------#
+
 #################### Determine Environment ####################
 function envir {
 if [[ -n ${three} ]]; then
@@ -790,13 +803,9 @@ fi
 #################### USER NAME ####################
 
 function setuname {
-if [[ -z ${uname} ]]; then
+	echo -e "\nYour current username is set to: \033[1;31m"${uname}"\033[1;000m\n"
 	read -p "What is your SSH User Name? " name
-	sed -ie "s/^uname=/uname=${name}/g" ${0}
-else
-	setname=$(awk '/^uname=/' ${0})
-	echo -e "\nYou've already set a User Name silly.\n --> ${setname}\n"
-fi
+	sed -ie "s/^uname=.*/uname=${name}/g" ${0}
 }
 uname=
 
@@ -806,6 +815,8 @@ if [[ -z ${acct} ]]; then
 	if [[ ${one} = dns ]] || [[ ${one} = ttfb ]]; then
 		echo && read -p "What Website are we working with? " acct
 		pod
+	elif [[ ${one} = update ]] || [[ ${one} = setuname ]]; then
+		echo
 	else
 		echo && read -p "What Account are we working with? " acct
 		pod
@@ -822,8 +833,20 @@ elif [[ ${acct} = pod-[0-9]* ]]; then
 fi
 }
 
-#################### MENU ####################
+#################### Update ####################
+function update {
+	if [[ $(uname) = [lL]inux ]]; then
+		sudo -v; sudo curl https://raw.githubusercontent.com/bmo-tv/Scripts/master/l2 -o /usr/sbin/l2
+		sudo chown root:root /usr/sbin/l2; sudo chmod +x /usr/sbin/l2
+		echo; sudo l2; l2
+	else
+		sudo -v; sudo curl -k -3 https://raw.githubusercontent.com/bmo-tv/Scripts/master/l2 -o /usr/sbin/l2
+		sudo chown root:wheel /usr/sbin/l2; sudo chmod +x /usr/sbin/l2
+		echo; sudo l2; l2
+	fi
+}
 
+#################### MENU ####################
 function menu {
 while [[ -z ${one} ]]; do
 	echo -e "${br}Available tasks:\n"
@@ -863,8 +886,6 @@ else
 		four=
 		five=
 		menu
-	elif [[ ${one} = uname ]]; then
-		setuname
 	else
 		echo -e "\nUsage is: l2 <function> <account> <optional argument>\n"
 		acct=
