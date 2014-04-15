@@ -698,7 +698,7 @@ if [[ -z ${uname} ]]; then
 	setuname
 else
 	if [[ -n ${one} ]]; then
-		if [[ ${one} == !(setuname|update|'help') ]]; then
+		if [[ ! ${one} =~ (setuname|update|'help') ]]; then
 			echo -e "\nYour current username is set to: \033[1;31m"${uname}"\033[1;000m"
 			account
 		fi
