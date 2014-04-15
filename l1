@@ -652,17 +652,18 @@ function update {
 
 #################### Update ####################
 function help {
-	if [[ -z ${acct} ]]; then
+	fnct=${acct}
+	if [[ -z ${fnct} ]]; then
 		echo -e "${br}Available tasks:\n"
 			grep -irn "^##\s" ${0} | awk '{$2="\033[1;31m"$2"\033[1;000m"; print $2}' | sort
 		echo -e "\n${br}"
-			read -p "Type function name that you wish to check ( X to exit ): " acct
+			read -p "Type function name that you wish to check ( X to exit ): " fnct
 		echo
 	fi
-	if [[ ${acct} = [xX] ]]; then
+	if [[ ${fnct} = [xX] ]]; then
 		exit 0
 	else
-		grep -A 1 -m 1 -e "^##\s${acct}" ${0}
+		grep -A 1 -E "^##\s${fnct}" ${0}
 	fi
 }
 
