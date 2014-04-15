@@ -73,19 +73,6 @@ done
 }
 #---------------------------------------------------------------------------------------------#
 
-##DONT USE: tfile => Description: Used to touch a file that is 404'ing in an account repeatedly.
-#Usage l2 tfile <account> <file name>
-function tfile { 
-if [[ -z ${three} ]]; then
-	read -p "What is the absolute path to the file would you would like to create? " file
-else
-	file=${three}
-fi
-	echo -e "\nDescription: Touches a file and sets proper permissions to mitigate 404 errors. Try using www-codes first to find 404 errors in an account."
-	echo ${sp}| ssh -tq ${uname}@${acct}.wpengine.com "cd /nas/wp/www/sites/${acct} && [[ -f ${file} ]] || touch ./${file} && sudo /nas/wp/admin fixperms ${acct} && exit ; bash"
-}
-#---------------------------------------------------------------------------------------------#
-
 ## mig-all => Description: Output lines to migrate every account associated with another account, including parent and children.
 #Usage l2 mig-all <account> <Destination Pod>
 function mig-all {
