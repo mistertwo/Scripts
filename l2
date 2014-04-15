@@ -1,6 +1,8 @@
 #!/bin/bash
 #Author: BMO and JM
-#Version: 1.0.6
+#Version: 1.0.7
+# 1.0.7 -- Added a simple Help function - BMO 4/15
+# 1.0.7 -- Cleaned up the inner workings of the script - BMO 4/15
 # 1.0.6 -- Added the Stage-Backup function -BMO 4/14
 # 1.0.6 -- Added the Update function - BMO 4/14
 # 1.0.6 -- Added the ability to set the Uname at any time - BMO 4/14
@@ -11,8 +13,6 @@
 # 1.0.3 -- Fixed the save section in the Logs function - BMO 3/25
 # 1.0.2 -- Added Install Instructions - BMO 3/24
 # 1.0.2 -- Added ability to check older logs with logs function - BMO 3/24
-# 1.0.2 -- Account check verbiage to cover Website - BMO 3/24
-# 1.0.1 -- Improvements to the DNS function output - BMO 3/19
 
 #################### To-Do ####################
 # Rework the Mig-All function
