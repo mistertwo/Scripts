@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 #Author: BMO and JM
 #Version: 1.0.7
 # 1.0.7 -- Added a simple Help function - BMO 4/15
