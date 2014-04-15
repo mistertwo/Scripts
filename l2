@@ -877,7 +877,7 @@ while [[ -z ${one} ]]; do
 if [[ ${one} = [xX] ]]; then
 	exit 0
 else
-if [[ ! ${one} == ('hep'|setuname|update) ]];
+if [[ ! ${one} =~ ('help'|setuname|update) ]];
 	then account
 fi
 declare -F ${one} &>/dev/null && echo && ${one} && echo && exit 0 || echo -e "${one}\nYou Didn't do it right! Try again.\n"; one=""
