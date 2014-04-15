@@ -809,7 +809,7 @@ function setuname {
 	one=
 	menu
 }
-uname=bmoore_
+uname=
 
 #################### Get Account ####################
 function account {
