@@ -803,7 +803,7 @@ fi
 
 #################### USER NAME ####################
 function setuname {
-	echo -e "\nYour current username is set to: \033[1;31m"${uname}"\033[1;000m\n"
+	#echo -e "\nYour current username is set to: \033[1;31m"${uname}"\033[1;000m\n"
 	read -p "What is your SSH User Name? " name
 		sed -ie "s/^uname=.*/uname=${name}/g" ${0}
 	menu
