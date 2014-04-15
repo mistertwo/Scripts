@@ -805,7 +805,7 @@ fi
 function setuname {
 	#echo -e "\nYour current username is set to: \033[1;31m"${uname}"\033[1;000m\n"
 	read -p "What is your SSH User Name? " name
-		sed -ie "s/^uname=.*/uname=${name}/g" ${0}
+		sudo sed -ie "s/^uname=.*/uname=${name}/g" ${0}
 	menu
 }
 uname=bmoore_
@@ -839,11 +839,11 @@ function update {
 	if [[ $(uname) = [lL]inux ]]; then
 		sudo -v; sudo curl https://raw.githubusercontent.com/bmo-tv/Scripts/master/l2 -o /usr/sbin/l2
 		sudo chown root:root /usr/sbin/l2; sudo chmod +x /usr/sbin/l2
-		echo; sudo l2 setuname
+		echo; l2 setuname
 	else
 		sudo -v; sudo curl -k -3 https://raw.githubusercontent.com/bmo-tv/Scripts/master/l2 -o /usr/sbin/l2
 		sudo chown root:wheel /usr/sbin/l2; sudo chmod +x /usr/sbin/l2
-		echo; sudo l2 setuname
+		echo; l2 setuname
 	fi
 }
 
