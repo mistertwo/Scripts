@@ -870,14 +870,16 @@ function help {
 function menu {
 while [[ -z ${one} ]]; do
 	echo -e "\n${br}Available tasks:\n"
-		grep -irn "^##\s" ${0} | awk '{$1=""; $2="\033[1;31m"$2"\033[1;000m"; print}' | sort
+	grep -irn "^##\s" ${0} | awk '{$1=""; $2="\033[1;31m"$2"\033[1;000m"; print}' | sort
 	echo -e ${br}
 	read -p "Type function name that you wish to use ( X to exit ): " one
 	echo
 if [[ ${one} = [xX] ]]; then
 	exit 0
 else
-account
+if [[ ! ${one} == ('hep'|setuname|update) ]];
+	then account
+fi
 declare -F ${one} &>/dev/null && echo && ${one} && echo && exit 0 || echo -e "${one}\nYou Didn't do it right! Try again.\n"; one=""
 fi
 done
