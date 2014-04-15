@@ -567,7 +567,7 @@ fi
 #---------------------------------------------------------------------------------------------#
 
 ## stage-backup => Description: Backup the Staging Site
-# Usage: l2 stage-backup <account>
+# Usage: l1 stage-backup <account>
 function stage-backup {
 	ssh -tq ${uname}@${acct}.wpengine.com "sudo -v; cd /nas/wp/www/staging/${acct}
 		mysqldump -u ${acct} -p\$(cat wp-config.php | grep \"define('DB_PASSWORD\" |  awk -F\"'\" '{print \$4}') snapshot_${acct} > mysql_$(date +%M).sql
@@ -608,7 +608,7 @@ fi
 
 #################### USER NAME ####################
 ## setuname => Description: Reset your SSH User Name.
-# Usage: l2 setuname
+# Usage: l1 setuname
 function setuname {
 	read -p "What is your SSH User Name? " name
 		sudo sed -ie "s/^uname=.*/uname=${name}/g" ${0}
@@ -639,22 +639,22 @@ fi
 
 #################### Update ####################
 ## update => Description: Get the latest version of this script.
-# Usage: l2 update
+# Usage: l1 update
 function update {
 	if [[ $(uname) = [lL]inux ]]; then
-		sudo -v; sudo curl https://raw.githubusercontent.com/bmo-tv/Scripts/master/l2 -o /usr/sbin/l2
-		sudo chown root:root /usr/sbin/l2; sudo chmod +x /usr/sbin/l2
-		echo; l2 setuname
+		sudo -v; sudo curl https://raw.githubusercontent.com/bmo-tv/Scripts/master/l1 -o /usr/sbin/l1
+		sudo chown root:root /usr/sbin/l1; sudo chmod +x /usr/sbin/l1
+		echo; l1 setuname
 	else
-		sudo -v; sudo curl -k -3 https://raw.githubusercontent.com/bmo-tv/Scripts/master/l2 -o /usr/sbin/l2
-		sudo chown root:wheel /usr/sbin/l2; sudo chmod +x /usr/sbin/l2
-		echo; l2 setuname
+		sudo -v; sudo curl -k -3 https://raw.githubusercontent.com/bmo-tv/Scripts/master/l1 -o /usr/sbin/l1
+		sudo chown root:wheel /usr/sbin/l1; sudo chmod +x /usr/sbin/l1
+		echo; l1 setuname
 	fi
 }
 
 #################### Help ####################
 ## help => Description: Print out some notes about how to use X function.
-# Usage: l2 help function
+# Usage: l1 help function
 function help {
 	fnct=${acct}
 	if [[ -z ${fnct} ]]; then

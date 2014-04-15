@@ -16,6 +16,7 @@
 
 #################### To-Do ####################
 # Rework the Mig-All function
+# Standardize the Date variables
 
 #################### Install ####################
 ### For Macs ###
@@ -24,7 +25,6 @@
 ### For Linux ###
 #sudo curl https://raw.githubusercontent.com/bmo-tv/Scripts/master/l2 -o /usr/sbin/l2 && sudo chown root:root /usr/sbin/l2 && sudo chmod +x /usr/sbin/l2 && l2 setuname
 #
-
 
 
 #################### FUNCTIONS ####################
