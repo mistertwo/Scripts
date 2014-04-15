@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 #Author: BMO and JM
 #Version: 1.0.7
 # 1.0.7 -- Added a simple Help function - BMO 4/15
@@ -817,8 +817,6 @@ if [[ -z ${acct} ]]; then
 	if [[ ${one} = dns ]] || [[ ${one} = ttfb ]]; then
 		echo && read -p "What Website are we working with? " acct
 		pod
-	elif [[ ${one} = update ]] || [[ ${one} = setuname ]] || [[ ${one} = 'help' ]]; then
-		echo
 	else
 		echo && read -p "What Account are we working with? " acct
 		pod
@@ -896,10 +894,10 @@ if [[ -z ${uname} ]]; then
 	setuname
 else
 	if [[ -n ${one} ]]; then
-		if [[ ${one} != setuname ]]; then
+		if [[ ${one} == !(setuname|update|'help') ]]; then
 			echo -e "\nYour current username is set to: \033[1;31m"${uname}"\033[1;000m"
+			account
 		fi
-		account
 		declare -F ${one} &>/dev/null && echo && ${one} && echo && exit 0 || 
 		echo -e "\n\033[1;31m"Looks like you entered the wrong function."\033[1;000m\n\nUsage is: l2 <function> <account> <optional argument>\n"
 		acct=
