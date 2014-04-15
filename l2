@@ -894,9 +894,11 @@ if [[ -z ${uname} ]]; then
 	setuname
 else
 	if [[ -n ${one} ]]; then
-		#echo -e "\nYour current username is set to: \033[1;31m"${uname}"\033[1;000m"
+		if [[ ${one} != setuname ]]; then
+			echo -e "\nYour current username is set to: \033[1;31m"${uname}"\033[1;000m"
+		fi
 		account
-		declare -F ${one} &>/dev/null && echo -e "\nYour current username is set to: \033[1;31m"${uname}"\033[1;000m" && ${one} && echo && exit 0 || 
+		declare -F ${one} &>/dev/null && echo && ${one} && echo && exit 0 || 
 		echo -e "\n\033[1;31m"Looks like you entered the wrong function."\033[1;000m\n\nUsage is: l2 <function> <account> <optional argument>\n"
 		acct=
 		three=
