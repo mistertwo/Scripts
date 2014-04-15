@@ -802,6 +802,8 @@ fi
 }
 
 #################### USER NAME ####################
+## setuname => Description: Reset your SSH User Name.
+# Usage: l2 setuname
 function setuname {
 	read -p "What is your SSH User Name? " name
 		sudo sed -ie "s/^uname=.*/uname=${name}/g" ${0}
@@ -831,6 +833,8 @@ fi
 }
 
 #################### Update ####################
+## update => Description: Get the latest version of this script.
+# Usage: l2 update
 function update {
 	if [[ $(uname) = [lL]inux ]]; then
 		sudo -v; sudo curl https://raw.githubusercontent.com/bmo-tv/Scripts/master/l2 -o /usr/sbin/l2
@@ -843,7 +847,9 @@ function update {
 	fi
 }
 
-#################### Update ####################
+#################### Help ####################
+## help => Description: Print out some notes about how to use X function.
+# Usage: l2 help function
 function help {
 	fnct=${acct}
 	if [[ -z ${fnct} ]]; then
