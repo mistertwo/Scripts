@@ -610,8 +610,6 @@ fi
 function setuname {
 	read -p "What is your SSH User Name? " name
 		sudo sed -ie "s/^uname=.*/uname=${name}/g" ${0}
-	one=
-	l1 menu
 }
 uname=bmoore_
 
