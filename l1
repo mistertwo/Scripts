@@ -1,6 +1,9 @@
 #!/bin/bash
 #Author: BMO and JM
-#Version: 0.0.8
+#Version: 1.0.0
+# 1.0.0 -- Skipping ahead a few for the big release!! - BMO 4/15
+# 1.0.0 -- Added the Help, Update, and fixed Uname functions - BMO 4/15
+# 1.0.0 -- Added the Stage-Backup function - BMO 4/15
 # 0.0.8 -- Check on the slog and slogchk input to make sure a Time Frame is entered -BMO 3/31
 # 0.0.8 -- slog function was searching both NGINX and apachstyle NGINX logs, fixed -BMO 3/31
 # 0.0.7 -- Better file name when saving logs into customers _wpeprivate folder - BMO 3/25
@@ -10,16 +13,16 @@
 # 0.0.6 -- Account check verbiage to cover Website - BMO 3/24
 # 0.0.5 -- Improvements to the DNS function output - BMO 3/19
 # 0.0.4 -- Clearner output with the DNS function -BMO 3/18
-# 0.0.3 -- Removed references to L2 script - BMO 3/17
+# 0.0.3 -- Removed references to l1 script - BMO 3/17
 # 0.0.2 -- Added the logs function - BMO 3/5
 
 
 #################### Install ####################
 ### For Macs ###
-#sudo curl -k -3 https://raw.githubusercontent.com/bmo-tv/Scripts/master/l1 -o /usr/sbin/l1 && sudo chown root:wheel /usr/sbin/l1 && sudo chmod +x /usr/sbin/l1 && sudo l1 && l1
+#sudo curl -k -3 https://raw.githubusercontent.com/bmo-tv/Scripts/master/l1 -o /usr/sbin/l1 && sudo chown root:wheel /usr/sbin/l1 && sudo chmod +x /usr/sbin/l1 && l1 setuname
 #
 ### For Linux ###
-#sudo curl https://raw.githubusercontent.com/bmo-tv/Scripts/master/l1 -o /usr/sbin/l1 && sudo chown root:root /usr/sbin/l1 && sudo chmod +x /usr/sbin/l1 && sudo l1 && l1
+#sudo curl https://raw.githubusercontent.com/bmo-tv/Scripts/master/l1 -o /usr/sbin/l1 && sudo chown root:root /usr/sbin/l1 && sudo chmod +x /usr/sbin/l1 && l1 setuname
 #
 
 
@@ -103,9 +106,6 @@ ssh -tq ${uname}@${acct}.wpengine.com "echo; sudo -v
 		sudo grep -oP '(?<=\[\/nas\/wp\/www\/cluster\-).*(?=\])' /var/log/mysql/mysql-slow.log| sort| uniq -c| sort -nk1| tail -10
 	echo -e ${sshbr}
 exit"
-if [[ ${acct} != pod-[0-9]* ]]; then
-	sql-heavy-rows
-fi
 }
 #---------------------------------------------------------------------------------------------#
 
@@ -488,6 +488,8 @@ function dns {
 		dig ${acct} | grep -A 3 ";; ANSWER SECTION:"
 	echo -e "\nWhois to find their Name Servers\n${br}"
 		whois ${acct} | grep -iE "^domain\sname:|^name\sserver:" | sort
+	echo -e "\nLets Curl the Header\n${br}"
+		curl -IL ${acct}
 		ttfb
 	echo -e "\nPinging the Domain 3 times\n${br}"
 		ping -c 3 ${acct}
@@ -495,7 +497,7 @@ function dns {
 #---------------------------------------------------------------------------------------------#
 
 ## logs => Description: Print the NGINX or Apache Access Logs
-# Usage: l2 logs <account> <service> <DD/MON>
+# Usage: l1 logs <account> <service> <DD/MON>
 function logs {
 if [[ -z ${three} ]] || [[ ${three} = [0-9][0-9]/[a-zA-Z][a-zA-Z][a-zA-Z] ]]; then
 	four=${three}
@@ -563,6 +565,20 @@ else
 fi
 }
 #---------------------------------------------------------------------------------------------#
+
+## stage-backup => Description: Backup the Staging Site
+# Usage: l1 stage-backup <account>
+function stage-backup {
+	ssh -tq ${uname}@${acct}.wpengine.com "sudo -v; cd /nas/wp/www/staging/${acct}
+		mysqldump -u ${acct} -p\$(cat wp-config.php | grep \"define('DB_PASSWORD\" |  awk -F\"'\" '{print \$4}') snapshot_${acct} > mysql_$(date +%M).sql
+		if (( \$(df | grep /dev/xvda | awk '{print \$4}') < \$(tar cf - * | wc -c) * 5 ))
+			then sudo tar -cvzf /nas/wp/www/sites/${acct}/_wpeprivate/${acct}-staging-\$(date +%H_%M).tar.gz --exclude wp-admin --exclude wp-includes *
+			rm -f mysql_$(date +%M).sql
+		else echo -e \"\\\nIt seems that the size of this backup is larger than the Available Disk.\\\n\\\nDisk Space - \$(df -h | grep /dev/xvda | awk '{print \$4}')\\\n\\\nSize of the Backup ~ \$(expr \$(expr \$(tar cf - * | wc -c) \* 5) / 1048576)Mb\\\n\\\n\"
+		fi"
+}
+#---------------------------------------------------------------------------------------------#
+
 #################### Determine Environment ####################
 function envir {
 if [[ -n ${three} ]]; then
@@ -589,18 +605,15 @@ elif [[ -z ${three} ]]; then
 		fi
 fi
 }
-#################### USER NAME ####################
 
+#################### USER NAME ####################
 function setuname {
-if [[ -z ${uname} ]]; then
 	read -p "What is your SSH User Name? " name
-	sed -ie "s/^uname=/uname=${name}/g" ${0}
-else
-	setname=$(awk '/^uname=/' ${0})
-	echo -e "\nYou've already set a User Name silly.\n --> ${setname}\n"
-fi
+		sudo sed -ie "s/^uname=.*/uname=${name}/g" ${0}
+	one=
+	menu
 }
-uname=
+uname=bmoore_
 
 #################### Get Account ####################
 function account {
@@ -624,11 +637,40 @@ elif [[ ${acct} = pod-[0-9]* ]]; then
 fi
 }
 
-#################### MENU ####################
+#################### Update ####################
+function update {
+	if [[ $(uname) = [lL]inux ]]; then
+		sudo -v; sudo curl https://raw.githubusercontent.com/bmo-tv/Scripts/master/l1 -o /usr/sbin/l1
+		sudo chown root:root /usr/sbin/l1; sudo chmod +x /usr/sbin/l1
+		echo; l1 setuname
+	else
+		sudo -v; sudo curl -k -3 https://raw.githubusercontent.com/bmo-tv/Scripts/master/l1 -o /usr/sbin/l1
+		sudo chown root:wheel /usr/sbin/l1; sudo chmod +x /usr/sbin/l1
+		echo; l1 setuname
+	fi
+}
 
+#################### Update ####################
+function help {
+	if [[ -z ${acct} ]]; then
+		echo -e "${br}Available tasks:\n"
+			grep -irn "^##\s" ${0} | awk '{$2="\033[1;31m"$2"\033[1;000m"; print $2}' | sort
+		echo -e "\n${br}"
+			read -p "Type function name that you wish to check ( X to exit ): " acct
+		echo
+	fi
+	if [[ ${acct} = [xX] ]]; then
+		exit 0
+	else
+		grep -A 1 -m 1 -e "^##\s${acct}" ${0}
+	fi
+}
+
+#################### MENU ####################
 function menu {
 while [[ -z ${one} ]]; do
-	echo -e "${br}Available tasks:\n"
+	echo -e "\nYour current username is set to: \033[1;31m"${uname}"\033[1;000m"
+	echo -e "\n${br}Available tasks:\n"
 	grep -irn "^##\s" ${0} | awk '{$1=""; $2="\033[1;31m"$2"\033[1;000m"; print}' | sort
 	echo -e ${br}
 	read -p "Type function name that you wish to use ( X to exit ): " one
@@ -656,23 +698,19 @@ if [[ -z ${uname} ]]; then
 	setuname
 else
 	if [[ -n ${one} ]]; then
-		echo -e "\nYour current username is set to: \033[1;31m"${uname}"\033[1;000m"
-		account
+		if [[ ${one} == !(setuname|update|'help') ]]; then
+			echo -e "\nYour current username is set to: \033[1;31m"${uname}"\033[1;000m"
+			account
+		fi
 		declare -F ${one} &>/dev/null && echo && ${one} && echo && exit 0 || 
-		echo -e "\n\033[1;31m"Looks like you entered the wrong function."\033[1;000m\n\nUsage is: l2 <function> <account> <optional argument>\n"
+		echo -e "\n\033[1;31m"Looks like you entered the wrong function."\033[1;000m\n\nUsage is: l1 <function> <account> <optional argument>\n"
 		acct=
 		three=
 		four=
 		five=
 		menu
-	elif [[ ${one} = uname ]]; then
-		setuname
 	else
-		echo -e "\nUsage is: l2 <function> <account> <optional argument>\n"
-		acct=
-		three=
-		four=
-		five=
+		echo -e "\nUsage is: l1 <function> <account> <optional argument>\n"
 		menu
 	fi
 fi
