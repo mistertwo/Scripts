@@ -865,7 +865,6 @@ function help {
 #################### MENU ####################
 function menu {
 while [[ -z ${one} ]]; do
-	echo -e "\nYour current username is set to: \033[1;31m"${uname}"\033[1;000m"
 	echo -e "\n${br}Available tasks:\n"
 		grep -irn "^##\s" ${0} | awk '{$1=""; $2="\033[1;31m"$2"\033[1;000m"; print}' | sort
 	echo -e ${br}
