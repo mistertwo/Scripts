@@ -9,7 +9,7 @@ if [[ $(hostname) = cyberlady ]]; then
 	sudo tlp start
 	synergyc -f othello &
 elif [[ $(hostname) = othello ]]; then
-	synergys -a 10.10.64.16 &
+	synergys --config /home/bmoore/.config/synergy.conf -a 10.10.64.16 &
 fi
 }
 
@@ -30,7 +30,7 @@ if [[ $(hostname) = cyberlady ]]; then
 	synergyc -f othello &
 elif [[ $(hostname) = othello ]]; then
 	pkill synergys
-	synergys -a 10.10.64.16 &
+	synergys --config /home/bmoore/.config/synergy.conf -a 10.10.64.16 &
 fi
 }
 
