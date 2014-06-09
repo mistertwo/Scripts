@@ -801,7 +801,7 @@ if [[ -z ${acct} ]]; then
 	fi
 fi
 pod
-acct_ip=$(dig ${acct}.wpengine.com | grep -A 3 ";; ANSWER SECTION:" | egrep "(([0-9]{1,3}\.){3}[0-9]{1,3})" | awk '{print $5}')
+acct_ip=$(dig ${acct}.wpengine.com | grep -A 3 ";; ANSWER SECTION:" | egrep -m 1 "(([0-9]{1,3}\.){3}[0-9]{1,3})" | awk '{print $5}')
 }
 
 #################### Update ####################
