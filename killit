@@ -1,7 +1,0 @@
-#!/bin/bash
-echo `ps -p $$`
-echo -e "\n"
-sleep .5
-#kill `ps -ef | grep terminal | awk '{ print $2 }'`
-#kill `ps -p $$ | awk '{ print $5 }'`
-kill $PPID
