@@ -570,7 +570,7 @@ fi
 # Usage: l1 stage-backup <account>
 function stage-backup {
 	ssh -tq ${uname}@${acct}.wpengine.com "sudo -v; cd /nas/wp/www/staging/${acct}
-		mysqldump -u ${acct} -p\$(cat wp-config.php | grep \"define('DB_PASSWORD\" |  awk -F\"'\" '{print \$4}') snapshot_${acct} > mysql_$(date +%M).sql
+		mysqldump -u ${acct} -p\$(cat wp-config.php | grep \"define( 'DB_PASSWORD\" |  awk -F\"'\" '{print \$4}') snapshot_${acct} > mysql_$(date +%M).sql
 		if (( \$(df | grep /dev/xvda | awk '{print \$4}') > (\$(tar cf - * | wc -c) / 1024) * 10 )); then
 			sudo tar -cvzf /nas/wp/www/sites/${acct}/_wpeprivate/${acct}-staging-\$(date +%H_%M).tar.gz --exclude wp-admin --exclude wp-includes *
 			rm -f mysql_$(date +%M).sql
