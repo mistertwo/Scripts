@@ -40,7 +40,7 @@ else
 		err=${three}
 	fi
 fi
-array=( 200 301 302 304 306 400 403 404 408 444 500 501 502 503 504 507 )
+array=( 200 301 302 304 306 400 403 404 408 444 499 500 501 502 503 504 507 )
 for i in ${array[*]}; do
 	if [[ ${i} = ${err} ]]; then
 		ssh -tq ${uname}@${acct_ip} "sudo cat /var/log/nginx/${acct}.access.log > /home/${uname}/${acct}.${epoch}.nginx && sudo cat /var/log/apache2/${acct}.access.log > /home/${uname}/${acct}.${epoch}.apache && exit ; bash"
