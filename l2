@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 #Author: BMO and JM
 #Version: 1.1.0
 # 1.1.0 -- Begin work on cleaning up this script,
@@ -52,7 +52,7 @@ for i in ${array[*]}; do
 		echo -e "\nDescription: Displays requests that had highest occurrences of the ${err} HTTP Status in ${acct}'s logs. Request counts are to the left of the requests below."
 		for nglog in ${acct}.${epoch}.nginx
 			do echo -e ${br}${nglog}"\n"
-				awk -F\| -v code=${err} '{if ($5 ~ code) printf "IP: %s Code: %s Referrer: %s Request: %s\n",$3,$5,$7,$10}' ${ngl2log}| sort| uniq -c| sort -nk1| tail
+				awk -F"\|" -v code=${err} '{if ($5 ~ code) printf "IP: %s Code: %s Referrer: %s Request: %s\n",$3,$5,$7,$10}' ${nglog}| sort| uniq -c| sort -nk1| tail
 			done
 		for apachelog in ${acct}.${epoch}.apache
 			do echo -e ${br}${apachelog}"\n"
