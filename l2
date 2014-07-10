@@ -818,8 +818,8 @@ if [[ -z ${date} ]] || [[ ${date} = $(date +%Y%m%d) ]]; then
 # Hit up logs from the past
 else
 	today=$(date +%Y%m%d)
-	while true; do
 	read -p "Just Look or Save to file? " opt
+	while true; do
 		if [[ ${opt} = [sS]* ]]; then
 			opt="> ${acct}.${serv}.${date}.log | sudo mv ${acct}.${serv}.${date}.log /nas/wp/www/sites/${acct}/_wpeprivate/${acct}.${serv}.${date}.log"
 		else
