@@ -875,17 +875,18 @@ uname=bmoore_
 ## help => Description: Print out some notes about how to use X function.
 # Usage: l2 help function
 help (){
-	if [[ -z ${1} ]]; then
+	fn=${2}
+	if [[ -z ${fn} ]]; then
 		echo -e "${br}Available tasks:\n"
 			grep -irn "^##\s" ${0} | awk '{$2="\033[1;31m"$2"\033[1;000m"; print $2}' | sort
 		echo -e "\n${br}"
-			read -p "Type function name that you wish to check ( X to exit ): " 1
+			read -p "Type function name that you wish to check ( X to exit ): " fn
 		echo
 	fi
-	if [[ ${1} = [xX] ]]; then
+	if [[ ${fn} = [xX] ]]; then
 		exit 0
 	else
-		grep -A 1 -E "^##\s${1}" ${0}
+		grep -A 1 -E "^##\s${fn}" ${0}
 		echo -e "\n${br}"
 	fi
 }
