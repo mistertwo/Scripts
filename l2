@@ -871,6 +871,26 @@ setuname (){
 uname=bmoore_
 #---------------------------------------------------------------------------------------------#
 
+#################### Help ####################
+## help => Description: Print out some notes about how to use X function.
+# Usage: l2 help function
+help (){
+	if [[ -z ${1} ]]; then
+		echo -e "${br}Available tasks:\n"
+			grep -irn "^##\s" ${0} | awk '{$2="\033[1;31m"$2"\033[1;000m"; print $2}' | sort
+		echo -e "\n${br}"
+			read -p "Type function name that you wish to check ( X to exit ): " 1
+		echo
+	fi
+	if [[ ${1} = [xX] ]]; then
+		exit 0
+	else
+		grep -A 1 -E "^##\s${1}" ${0}
+		echo -e "\n${br}"
+	fi
+}
+#---------------------------------------------------------------------------------------------#
+
 #################### Get Account ####################
 account (){
 
@@ -917,26 +937,6 @@ update (){
 }
 #---------------------------------------------------------------------------------------------#
 
-#################### Help ####################
-## help => Description: Print out some notes about how to use X function.
-# Usage: l2 help function
-function help {
-	fnct=${acct}
-	if [[ -z ${fnct} ]]; then
-		echo -e "${br}Available tasks:\n"
-			grep -irn "^##\s" ${0} | awk '{$2="\033[1;31m"$2"\033[1;000m"; print $2}' | sort
-		echo -e "\n${br}"
-			read -p "Type function name that you wish to check ( X to exit ): " fnct
-		echo
-	fi
-	if [[ ${fnct} = [xX] ]]; then
-		exit 0
-	else
-		grep -A 1 -E "^##\s${fnct}" ${0}
-	fi
-}
-#---------------------------------------------------------------------------------------------#
-
 #################### MENU ####################
 menu (){
 while [[ -z ${cmd} ]]; do
@@ -978,8 +978,8 @@ if [[ -n ${1} ]]; then
 	if [[ ! ${cmd} =~ (setuname|update|'help') ]]; then
 		echo -e "\nYour current username is set to: \033[1;31m"${uname}"\033[1;000m"
 		account ${cmd} ${2}
+		shift 2
 	fi	
-	shift 2
 	echo
 	declare -F ${cmd} &>/dev/null && ${cmd} $* && exit 0 ||
 		echo -e "\n\033[1;31m"Looks like you entered the wrong function."\033[1;000m\n\nUsage is: l2 <function> <account> <optional argument>\n" && menu
