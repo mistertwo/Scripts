@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 #Author: BMO and JM
 #Version: 1.1.0
 # 1.1.0 -- Begin work on cleaning up this script,
@@ -399,22 +399,8 @@ duplicity (){ local OPTIND
 		read -p "From what date? YYYYMMDD " date
 		echo
     fi
-    # Make sure we have the current Month
-    if [[ ${date} =~ ^[0-9]{2}$ ]]; then
-    	date="$(date +%Y-%m)-${date}"
-    # Make sure we have the curent Year
-    elif [[ ${date} =~ ^[0-9]{2}([^a-zA-Z0-9])[0-9]{2}$ ]]; then 
-    	date="$(date +%Y)-${date}"
-    # More Sanity Checks
-	elif [[ ${date} =~ ^[0-9]{4}$ ]]; then
-		date=$(date +%Y)${date}
-    fi
-    # Sanitize the results
-    if [[ $date =~ ^[0-9]{4}\..* ]]; then
-    	echo ${date} | sed -e "s/\./\-/g"
-    fi
-    # Convert it to what we need
-    	date=$(date -d ${date} +%Y%m%d)
+    # Ensure uniform date input
+	san_date ${date}
     # Optionally, get a specific folder
     if [[ -z ${folder} ]]; then
     	read -p "Which Folder or File? (Press enter for the whole site) " folder
@@ -912,13 +898,13 @@ if [[ -z ${2} ]] || [[ ${2} == -* ]]; then
 fi
 
 	# Check if it's a pod
-if [[ ${acct} =~ [0-9]{4} ]]; then
+if [[ ${acct} =~ ^[0-9]{4}$ ]]; then
 	acct="pod-${acct}"
 	pod=${acct}
-elif [[ ${acct} =~ [0-9]{3} ]]; then
+elif [[ ${acct} =~ ^[0-9]{3}$ ]]; then
 	acct="sftp${acct}"
 	pod=${acct}
-elif [[ ${acct} =~ pod-[0-9]{4} ]]; then
+elif [[ ${acct} =~ ^pod-[0-9]{4}$ ]]; then
 	acct=${acct}
 	pod=${acct}
 fi
