@@ -831,7 +831,6 @@ else
 		maxtime=\$(expr \$(expr \$(date +%s) - \$(date -d \"${date}\" +%s)) / 86400 + 1)
 				sudo zcat -f \$(${log}) | zgrep -i \"$(date -d ${date} +%d/%b)\" ${opt}
 				echo -e \"All Done, Next up.\\\n\"
-			fi
 		exit"
 	echo
 	read -p "Would you like to try the other Access Logs? ( Y / N ) " a
