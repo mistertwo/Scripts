@@ -31,14 +31,6 @@ while getopts ":c:" opt; do
 	case $opt in
 		c)
 			err=$OPTARG;;
-		*) 
-			echo -e "\nUsage Error: l2 www-codes <account> -c <Code #>\n\n"
-			exit 1
-			;;
-		:)
-			echo "Option -$OPTARG demands more!"
-			exit 1
-			;;
 	esac
 done
 if [[ -z ${err} ]]; then
