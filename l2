@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 #Author: BMO and JM
 #Version: 1.1.0
 # 1.1.0 -- Begin work on cleaning up this script,
@@ -898,13 +898,10 @@ if [[ -z ${2} ]] || [[ ${2} == -* ]]; then
 fi
 
 	# Check if it's a pod
-if [[ ${acct} =~ ^[0-9]{4}$ ]]; then
+if [[ ${acct} =~ ^[0-9]{3,5}$ ]]; then
 	acct="pod-${acct}"
 	pod=${acct}
-elif [[ ${acct} =~ ^[0-9]{3}$ ]]; then
-	acct="sftp${acct}"
-	pod=${acct}
-elif [[ ${acct} =~ ^pod-[0-9]{4}$ ]]; then
+elif [[ ${acct} =~ ^pod-[0-9]{3,5}$ ]]; then
 	acct=${acct}
 	pod=${acct}
 fi
