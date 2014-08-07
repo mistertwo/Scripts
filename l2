@@ -432,7 +432,9 @@ duplicity (){ local OPTIND
 						sudo mv ${acct}-duplicity.${epoch}.tar /nas/wp/www/sites/${acct}/_wpeprivate/
 						exit"
 				else
-					ssh -tq ${uname}@${acct_ip} "sudo mv -f ${acct} /nas/wp/www/sites/${acct}/_wpeprivate/; exit"
+					ssh -tq ${uname}@${acct_ip} "sudo mkdir /nas/wp/www/sites/${account}/_wpeprivate/${date}-${account}
+						sudo mv -f ${acct}/* /nas/wp/www/sites/${acct}/_wpeprivate/${date}-${account}/.
+						exit"
 				fi
 		elif [[ -z ${option} ]]; then
 			echo -e "\nAlright, dropping you in the folder, have fun.\n"
