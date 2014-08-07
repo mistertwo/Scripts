@@ -432,8 +432,8 @@ duplicity (){ local OPTIND
 						sudo mv ${acct}-duplicity.${epoch}.tar /nas/wp/www/sites/${acct}/_wpeprivate/
 						exit"
 				else
-					ssh -tq ${uname}@${acct_ip} "sudo mkdir /nas/wp/www/sites/${account}/_wpeprivate/${date}-${account}
-						sudo mv -f ${acct}/* /nas/wp/www/sites/${acct}/_wpeprivate/${date}-${account}/.
+					ssh -tq ${uname}@${acct_ip} "sudo mkdir /nas/wp/www/sites/${acct}/_wpeprivate/${epoch}-${acct}
+						sudo mv -f ${acct}/* /nas/wp/www/sites/${acct}/_wpeprivate/${epoch}-${acct}/.
 						exit"
 				fi
 		elif [[ -z ${option} ]]; then
