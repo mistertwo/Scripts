@@ -503,7 +503,7 @@ update (){
 		sudo chown root:root /usr/sbin/l1; sudo chmod +x /usr/sbin/l1
 		echo; l1 setuname; echo
 	else
-		sudo -v; sudo curl -k -3 https://raw.githubusercontent.com/bmo-tv/Scripts/master/l1 -o /usr/sbin/l1
+		sudo -v; sudo curl https://raw.githubusercontent.com/bmo-tv/Scripts/master/l1 -o /usr/sbin/l1
 		sudo chown root:wheel /usr/sbin/l1; sudo chmod +x /usr/sbin/l1
 		echo; l1 setuname; echo
 	fi
