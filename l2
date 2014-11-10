@@ -616,50 +616,75 @@ ssh -tq ${uname}@${srvr} "echo; sudo -v; count=0
 exit"
 }
 #---------------------------------------------------------------------------------------------#
-#### NEED TO TURN THESE TWO INTO A "FILE" COMMAND ####
-### get-file => Description: Get a file from a Site Directory
-### Usage: l2 get-file <account> <envir> <Remote File> <Local Dest>
-get-file (){
-	envir
-	if [[ -n ${four} ]] && [[ -n ${five} ]]; then
-		remote=${four}
-		local=${five}
-	elif [[ -n ${four} ]] && [[ -z ${five} ]]; then
-		dir=${four}
-		read -p "Where would you like this file on your local machine? " local
-	else
-		read -p "Where is this file in the Sites Directory? " remote
-		echo && read -p "Where would you like this file on your local machine? " local
+
+## file => Description: Get or Put a file from/on the remote server
+# Usage: l2 file <account> -G -P -s -p -l <local file> -r <remote file>
+file (){ local OPTIND
+	while getopts ":Gl:Ppr:s" opt; do
+		case $opt in
+			G)
+				flow='get';;
+			l)
+				locfile=$OPTARG;;
+			P)
+				flow='put';;
+			p)
+				envir='sites';;
+			r)
+				remfile=$OPTARG;;
+			s)
+				envir='staging';;
+		esac
+	done
+
+	#Make sure we have the right variables
+	if [[ -z ${flow} ]]; then
+		read -p "Are we Getting a file remotely, or Putting a local file? " flow
 	fi
+
+	if [[ -z ${remfile} ]]; then
+		if [[ $flow == [Gg]* ]]; then
+			echo
+			read -p "Where is this file on the Remote Server? (IE: wp-content/themes/mytheme/functions.php) " remfile
+		else
+			echo
+			read -p "Where on the Remote Server are we placing this file? (IE: wp-content/themes/mytheme/functions.php) " remfile
+		fi
+	fi
+
+	if [[ -z ${locfile} ]]; then
+		if [[ ${flow} == [Gg]* ]]; then
+			echo
+			read -p "Where on your Local Machine are we placing this file? " locfile
+		else
+			echo
+			read -p "Where is this file on your Local Machine? " locfile
+		fi
+	fi
+
+	#Set production as the default environment
+	if [[ -z ${envir} ]]; then
+		envir='sites'
+	fi
+
+	#Get the file
+	if [[ ${flow} == [Gg]* ]]; then
 		echo -e "\nGetting the file from the ${envir} Server\n${br}"
-		scp -rq ${uname}@${srvr}:/nas/wp/www/${envir}/${acct}/${remote} ${local}
+		scp -rq ${uname}@${srvr}:/nas/wp/www/${envir}/${acct}/${remfile} ${locfile}
 		read -p "What command do you want to use to Open it with? (Press Enter to skip) " cmd
 			if [[ -z ${cmd} ]]; then
 				exit 0
 			else
-			echo -e "\nRight, running \"${cmd} ${local}\"\n${br}"
+			echo -e "\nRight, running \"${cmd} ${locfile}\"\n${br}"
 			sleep 2
-			${cmd} ${local}
+			${cmd} ${locfile}
 			fi
-}
-
-### put-file => Description: Put a file in Site Directory
-### Usage: l2 put-file <account> <envir> <Local File> <Remote Dest>
-put-file (){
-	envir
-	if [[ -n ${four} ]] && [[ -n ${five} ]]; then
-		local=${four}
-		remote=${five}
-	elif [[ -n ${four} ]] && [[ -z ${five} ]]; then
-		local=${four}
-		read -p "Where do you want it on the server? " remote
-	else
-		read -p "Where is the file? " local
-		echo && read -p "Where do you want it on the server? " remote
-	fi
+	#Put the file
+	elif [[ ${flow} == [Pp]* ]]; then
 		echo -e "\nPutting the File on the ${envir} Server\n"
-		scp -rq ${local} ${uname}@${srvr}:/home/${uname}/${local}
-		ssh -tq ${uname}@${srvr} "sudo mv ${local} /nas/wp/www/${envir}/${acct}/${remote} && exit ; bash"
+		scp -rq ${locfile} ${uname}@${srvr}:/nas/wp/www/${envir}/${acct}/${remfile}
+		# ssh -tq ${uname}@${srvr} "sudo mv ${locfile} /nas/wp/www/${envir}/${acct}/${remfile} && exit ; bash"
+	fi
 }
 #---------------------------------------------------------------------------------------------#
 
