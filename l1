@@ -1,6 +1,7 @@
 #!/bin/bash
 #Author: BMO and JM
 #Version: 1.1.1
+# 1.1.1 -- Added the 'file' function - BMO 11/110
 # 1.1.1 -- Added getopts function to L1 script - BMO 11/10
 # 1.1.1 -- Added better RAX logic (skip lbmaster) - BMO 11/10
 # 1.1.0 -- Begin work on cleaning up this script,
