@@ -15,17 +15,17 @@
 
 #################### Install ####################
 ### For Macs ###
-#sudo curl https://raw.githubusercontent.com/bmo-tv/Scripts/master/l2 -o /usr/sbin/l2 && sudo chown root:wheel /usr/sbin/l2 && sudo chmod +x /usr/sbin/l2 && l2 setuname
+#sudo curl https://raw.githubusercontent.com/bmo-tv/Scripts/master/l1 -o /usr/sbin/l1 && sudo chown root:wheel /usr/sbin/l1 && sudo chmod +x /usr/sbin/l1 && l1 setuname
 #
 ### For Linux ###
-#sudo curl https://raw.githubusercontent.com/bmo-tv/Scripts/master/l2 -o /usr/sbin/l2 && sudo chown root:root /usr/sbin/l2 && sudo chmod +x /usr/sbin/l2 && l2 setuname
+#sudo curl https://raw.githubusercontent.com/bmo-tv/Scripts/master/l1 -o /usr/sbin/l1 && sudo chown root:root /usr/sbin/l1 && sudo chmod +x /usr/sbin/l1 && l1 setuname
 #
 
 
 #################### FUNCTIONS ####################
 #---------------------------------------------------------------------------------------------#
 ## www-codes => Description: Grab occurrences of a certain HTTP code in an account's logs.
-#Usage l2 www-codes <account> -c <Code #>
+#Usage l1 www-codes <account> -c <Code #>
 www-codes (){ local OPTIND
 while getopts ":c:" opt; do
 	case $opt in
@@ -71,7 +71,7 @@ done
 #---------------------------------------------------------------------------------------------#
 
 ## hiload => Description: Show load that was 1.5x the number of processer cores.
-# Usage l2 hiload <account> -d <DD>
+# Usage l1 hiload <account> -d <DD>
 hiload (){ local OPTIND
 while getopts ":d:" opt; do
 	case $opt in
@@ -104,7 +104,7 @@ fi
 #---------------------------------------------------------------------------------------------#
 
 ## nginx-conf =>  Description: Open the accounts NGINX Config file with preferred program (less by default).
-#Usage: l2 nginx-conf <account> -p <program>
+#Usage: l1 nginx-conf <account> -p <program>
 nginx-conf (){ local OPTIND
 while getopts ":p:" opt; do
 	case $opt in
@@ -126,7 +126,7 @@ ssh -tq ${uname}@${srvr} "if [[ ! -f /nas/wp/conf/lb/sites/${acct}.conf ]]
 #---------------------------------------------------------------------------------------------#
 
 ## login: Login to an Account via SSH (Account required, location optional, Production Environment Default)
-# Usage l2 login <account> -l <location> -p or -s
+# Usage l1 login <account> -l <location> -p or -s
 login (){
 	local OPTIND
 while getopts ":l:ps" opt; do
@@ -175,7 +175,7 @@ fi
 #---------------------------------------------------------------------------------------------#
 
 ## find => Description: Find either a File or a String of Text in the account.
-# Usage: l2 find <account> -p -s -f <file> -t <text>
+# Usage: l1 find <account> -p -s -f <file> -t <text>
 find (){ local OPTIND
 	#Declare Opts
 	while getopts ":psf:t:" opt; do
@@ -262,7 +262,7 @@ find (){ local OPTIND
 #---------------------------------------------------------------------------------------------#
 
 ## acct-count => Description: Count how many active accounts a customer has.
-# Usage: l2 acct-count <account>
+# Usage: l1 acct-count <account>
 acct-count (){
 ssh -tq ${uname}@${srvr} "echo; sudo -v; count=0
 	for i in \$(sudo /nas/wp/ec2/cluster parent-child ${acct})
@@ -276,7 +276,7 @@ exit"
 #---------------------------------------------------------------------------------------------#
 
 ## htop => Description: Run htop on the customers server.
-# Usage: l2 htop <account>
+# Usage: l1 htop <account>
 htop (){
 	ssh -tq ${uname}@${srvr} "htop; exit"
 	# echo && read -p "Would you like to run the hiload function too? ( X to exit ) - " q
@@ -289,7 +289,7 @@ htop (){
 #---------------------------------------------------------------------------------------------#
 #### NEED TO ADD TO YSLOW GROUP ####
 ### ttfb => Description: Measure TTFB 10 times with 1s intervals.
-### Usage: l2 ttfb <domain.com>
+### Usage: l1 ttfb <domain.com>
 ttfb (){
 if [[ -n ${acct} ]]; then
 	echo -e "\n\nTTFB measured 10 times with 1s intervals:"
@@ -308,7 +308,7 @@ fi
 #---------------------------------------------------------------------------------------------#
 
 ## dns => Description: Get as much DNS Information as we can.
-# Usage: l2 dns <domain.com>
+# Usage: l1 dns <domain.com>
 dns (){
 	echo -e "\nDig the Domain for its DNS Records\n${br}"
 		dig ${acct} | grep -A 3 ";; ANSWER SECTION:"
@@ -321,7 +321,7 @@ dns (){
 #---------------------------------------------------------------------------------------------#
 
 ## logs => Description: Print the NGINX or Apache Access Logs
-# Usage: l2 logs <account> -a -n -d <MM/DD>
+# Usage: l1 logs <account> -a -n -d <MM/DD>
 logs (){ local OPTIND
 while getopts ":and:" opt; do
 	case ${opt} in
@@ -397,7 +397,7 @@ fi
 #---------------------------------------------------------------------------------------------#
 
 ## stage-backup => Description: Backup the Staging Site
-# Usage: l2 stage-backup <account>
+# Usage: l1 stage-backup <account>
 stage-backup (){
 	ssh -tq ${uname}@${srvr} "sudo -v; cd /nas/wp/www/staging/${acct}
 		mysqldump -u ${acct} -p\$(cat wp-config.php | grep \"define( 'DB_PASSWORD\" |  awk -F\"'\" '{print \$4}') snapshot_${acct} > mysql_$(date +%M).sql
@@ -411,7 +411,7 @@ stage-backup (){
 
 #################### USER NAME ####################
 ## setuname => Description: Reset your SSH User Name.
-# Usage: l2 setuname
+# Usage: l1 setuname
 setuname (){
 	read -p "What is your SSH User Name? " name
 		sudo sed -ie "s/^uname=.*/uname=${name}/g" ${0}
@@ -445,7 +445,7 @@ fi
 
 #################### Help ####################
 ## help => Description: Print out some notes about how to use X function.
-# Usage: l2 help function
+# Usage: l1 help function
 help (){
 	fn=${2}
 	if [[ -z ${fn} ]]; then
@@ -496,16 +496,16 @@ fi
 
 #################### Update ####################
 ## update => Description: Get the latest version of this script.
-# Usage: l2 update
+# Usage: l1 update
 update (){
 	if [[ $(uname) = [lL]inux ]]; then
-		sudo -v; sudo curl https://raw.githubusercontent.com/bmo-tv/Scripts/master/l2 -o /usr/sbin/l2
-		sudo chown root:root /usr/sbin/l2; sudo chmod +x /usr/sbin/l2
-		echo; l2 setuname; echo
+		sudo -v; sudo curl https://raw.githubusercontent.com/bmo-tv/Scripts/master/l1 -o /usr/sbin/l1
+		sudo chown root:root /usr/sbin/l1; sudo chmod +x /usr/sbin/l1
+		echo; l1 setuname; echo
 	else
-		sudo -v; sudo curl -k -3 https://raw.githubusercontent.com/bmo-tv/Scripts/master/l2 -o /usr/sbin/l2
-		sudo chown root:wheel /usr/sbin/l2; sudo chmod +x /usr/sbin/l2
-		echo; l2 setuname; echo
+		sudo -v; sudo curl -k -3 https://raw.githubusercontent.com/bmo-tv/Scripts/master/l1 -o /usr/sbin/l1
+		sudo chown root:wheel /usr/sbin/l1; sudo chmod +x /usr/sbin/l1
+		echo; l1 setuname; echo
 	fi
 }
 #---------------------------------------------------------------------------------------------#
@@ -555,9 +555,9 @@ if [[ -n ${1} ]]; then
 	fi	
 	echo
 	declare -F ${cmd} &>/dev/null && ${cmd} $* && exit 0 ||
-		echo -e "\n\033[1;31m"Looks like you entered the wrong function."\033[1;000m\n\nUsage is: l2 <function> <account> <optional argument>\n" && menu
+		echo -e "\n\033[1;31m"Looks like you entered the wrong function."\033[1;000m\n\nUsage is: l1 <function> <account> <optional argument>\n" && menu
 else
-	echo -e "\nUsage is: l2 <function> <account> <optional argument>\n"
+	echo -e "\nUsage is: l1 <function> <account> <optional argument>\n"
 	menu
 fi
 #---------------------------------------------------------------------------------------------#
