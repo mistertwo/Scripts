@@ -1,0 +1,543 @@
+#!/bin/bash -x
+#Author: BMO and JM
+#Version: 1.1.1
+# 1.1.1 -- Added getopts to L1 script - BMO 11/10
+# 1.1.0 -- Begin work on cleaning up this script,
+# 1.0.8 -- Reworked the acct and pod variables to be compatible with RAX Clusters - BMO 6/4
+# 1.0.7 -- Added a simple Help function - BMO 4/15
+# 1.0.7 -- Cleaned up the inner workings of the script - BMO 4/15
+# 1.0.6 -- Added the Stage-Backup function -BMO 4/14
+# 1.0.6 -- Added the Update function - BMO 4/14
+# 1.0.6 -- Added the ability to set the Uname at any time - BMO 4/14
+
+#################### To-Do ####################
+# Rework the Mig-All function
+# Standardize the Date variables
+
+#################### Install ####################
+### For Macs ###
+#sudo curl https://raw.githubusercontent.com/bmo-tv/Scripts/master/l2 -o /usr/sbin/l2 && sudo chown root:wheel /usr/sbin/l2 && sudo chmod +x /usr/sbin/l2 && l2 setuname
+#
+### For Linux ###
+#sudo curl https://raw.githubusercontent.com/bmo-tv/Scripts/master/l2 -o /usr/sbin/l2 && sudo chown root:root /usr/sbin/l2 && sudo chmod +x /usr/sbin/l2 && l2 setuname
+#
+
+
+#################### FUNCTIONS ####################
+#---------------------------------------------------------------------------------------------#
+## www-codes => Description: Grab occurrences of a certain HTTP code in an account's logs.
+#Usage l2 www-codes <account> -c <Code #>
+www-codes (){ local OPTIND
+while getopts ":c:" opt; do
+	case $opt in
+		c)
+			err=$OPTARG;;
+	esac
+done
+if [[ -z ${err} ]]; then
+	read -p "What HTTP Code would you like to search for? " err
+fi
+array=( 200 301 302 304 306 400 403 404 408 444 499 500 501 502 503 504 507 )
+for i in ${array[*]}; do
+	if [[ ${i} = ${err} ]]; then
+		ssh -tq ${uname}@${acct_ip} "sudo cat /var/log/nginx/${acct}.access.log > /home/${uname}/${acct}.${epoch}.nginx && sudo cat /var/log/apache2/${acct}.access.log > /home/${uname}/${acct}.${epoch}.apache && exit ; bash"
+		scp -rq ${uname}@${acct_ip}:/home/${uname}/${acct}.${epoch}.nginx ${acct}.${epoch}.nginx && scp -rq ${uname}@${acct_ip}:/home/${uname}/${acct}.${epoch}.apache ${acct}.${epoch}.apache
+		echo -e "\nDescription: Displays requests that had highest occurrences of the ${err} HTTP Status in ${acct}'s logs. Request counts are to the left of the requests below."
+		for nglog in ${acct}.${epoch}.nginx
+			do echo -e ${br}${nglog}"\n"
+				awk -F"\|" -v code=${err} '{if ($5 ~ code) printf "IP: %s Code: %s Referrer: %s Request: %s\n",$3,$5,$7,$10}' ${nglog}| sort| uniq -c| sort -nk1| tail
+			done
+		for apachelog in ${acct}.${epoch}.apache
+			do echo -e ${br}${apachelog}"\n"
+				awk -v code=${err} '{if ($9 ~ code) printf "IP: %s Code: %s Referrer: %s Request: %s %s %s\n",$1,$9,$11,$6,$7,$8}' ${apachelog}| sort| uniq -c| sort -nk1| tail
+			done
+		echo -e ${br}
+		ssh -tq ${uname}@${acct_ip} "rm ${acct}.${epoch}.nginx ${acct}.${epoch}.apache && exit ; bash" && rm ${acct}.${epoch}.nginx ${acct}.${epoch}.apache
+		read -p "Would you like to try another code? ( X to exit ) " ans
+		if [[ ${ans} = [xX] ]]; then
+			echo && exit 0
+		else
+			err=${ans}
+			www-codes
+		fi
+	fi
+done
+	echo && read -p "Code \"${err}\" Not Found :( Would you like to try again? ( X to exit ) " err
+	if [[ ${err} != [xX] ]]; then
+		www-codes
+	else
+		echo && exit 0
+	fi
+}
+#---------------------------------------------------------------------------------------------#
+
+## hiload => Description: Show load that was 1.5x the number of processer cores.
+# Usage l2 hiload <account> -d <DD>
+hiload (){ local OPTIND
+while getopts ":d:" opt; do
+	case $opt in
+		d)
+			day=$OPTARG;;
+	esac
+done
+if [[ -z ${day} ]]; then
+	day=$(date +%d)
+fi
+ssh -tq ${uname}@${acct_ip} "echo; sudo -v
+	echo -e \"\\\n${sshbr}Description: Show UTC times when load was over 1.5x the number of processor cores for this server.\"
+		if [[ ! -f /var/log/sysstat/sa${day} ]]
+			then echo -e \"\\\nInfo for ${day} does not exist, please try again.\"
+		else sudo sar -q -f /var/log/sysstat/sa${day}| awk -vcpu=\$(grep ^processor /proc/cpuinfo| wc -l) '{if (\$5 > (1.5 * cpu)) print}'
+		fi
+exit"
+	echo -e "\n${br}"
+if [[ ${day} = `date +%d` ]]; then
+	read -p "Run \"slog\" for a certain time? HH:MM or X - " a
+		echo
+			if [[ ${a} = [0-9][0-9]:[0-9][0-9] ]]; then
+				time=${a}
+				slog
+			fi
+else
+	exit 0
+fi
+}
+#---------------------------------------------------------------------------------------------#
+
+## nginx-conf =>  Description: Open the accounts NGINX Config file with preferred program (less by default).
+#Usage: l2 nginx-conf <account> -p <program>
+nginx-conf (){ local OPTIND
+while getopts ":p:" opt; do
+	case $opt in
+		p)
+			prog=$OPTARG;;
+	esac
+done
+if [[ -z ${prog} ]]; then
+	prog='less'
+fi
+ssh -tq ${uname}@${acct_ip} "if [[ ! -f /nas/wp/conf/lb/sites/${acct}.conf ]]
+	then echo -e \"\\\nNo File, maybe you typed the account wrong?\"
+		exit
+    else
+    	${prog} /nas/wp/conf/lb/sites/${acct}.conf
+    exit
+	fi"
+}
+#---------------------------------------------------------------------------------------------#
+
+## login: Login to an Account via SSH (Account required, location optional, Production Environment Default)
+# Usage l2 login <account> -l <location> -p or -s
+login (){
+	local OPTIND
+while getopts ":l:ps" opt; do
+	case $opt in
+		l)
+			loc=$OPTARG;;
+		p)
+			envir='sites';;
+		s)
+			envir='staging';;
+	esac
+done
+if [[ -z ${envir} ]]; then
+	envir='sites'
+fi
+if [[ -n ${pod} ]]; then
+	if [[ -n ${loc} ]]; then
+		echo -e ${br}"Alright, Logging into ${pod} and going to ${loc}.\n"
+			ssh -tq ${uname}@${acct_ip} "cd ${loc}; bash"
+	else
+		echo -e ${br}"Alright, logging into ${pod}.\n"
+			ssh -tq ${uname}@${acct_ip}
+	fi
+else
+	if [[ -n ${loc} ]]; then
+		echo -e ${br}"Alright, Logging into the ${envir} and going to ${loc}\n"
+			ssh -tq ${uname}@${acct_ip} " if [[ -d /nas/wp/www/${envir}/${acct} ]]
+				then cd /nas/wp/www/${envir}/${acct} && cd ${loc}
+			else
+				echo -e \"The Account, \033[1;31m"${acct}"\033[1;000m, no longer has a Site Directory, exiting.\"
+					exit
+			fi; bash"
+	else
+		echo -e ${br}"Alright, logging into the ${envir} Server\n"
+			ssh -tq ${uname}@${acct_ip} "
+				if [[ -d /nas/wp/www/${envir}/${acct} ]]
+					then cd /nas/wp/www/${envir}/${acct}
+				else
+					echo -e \"The Account, \033[1;31m"${acct}"\033[1;000m, no longer has a Site Directory, exiting.\"
+					exit
+		    	fi; bash"
+	fi
+fi
+	echo
+}
+#---------------------------------------------------------------------------------------------#
+
+## find => Description: Find either a File or a String of Text in the account.
+# Usage: l2 find <account> -p -s -f <file> -t <text>
+find (){ local OPTIND
+	#Declare Opts
+	while getopts ":psf:t:" opt; do
+		case $opt in
+			f)
+				file=$OPTARG;;
+			p)
+				envir='sites';;
+			s)
+				envir='staging';;
+			t)
+				text=$OPTARG;;
+		esac
+	done
+	# Check if we have everything we need
+	if [[ -z ${file} ]] && [[ -z ${text} ]]; then
+		echo -e ${br}
+		read -p "What are you looking for? " search
+		read -p "Is this a File or a String that you are looking for? " which
+		echo
+			# Set what we are looking for
+			if [[ ${which} = f* ]]; then
+				file=${search}
+			else
+				text=${search}
+			fi
+	fi
+	# Make sure we know which environment we are looking through
+	if [[ -z ${envir} ]]; then
+		envir='sites'
+	fi
+	# Lets get some results
+	echo -e "\n"${br}
+	if [[ -n ${file} ]] && [[ -n ${text} ]]; then 
+		ssh -tq ${uname}@${acct_ip} "
+			sudo grep -i -e \"${text}\" /nas/wp/www/${envir}/${acct}/${file} > /home/${uname}/find.${epoch}
+			nl find.${epoch}
+			echo -e ${sshbr}
+			read -p \"Which File would you like to Open? Pick a number or X to exit. \" num
+			while [[ \$num = [0-9]* ]]; do
+				line=\$(awk -F\":\" '{print \$1}' find.${epoch} | sed -n \"\$num\"p)
+					sudo nano +\${line} /nas/wp/www/${envir}/${acct}/${file}
+				nl find.${epoch}
+				echo -e ${sshbr}
+				read -p \"Would you like to open another? X to finish \" num
+			done
+			exit"
+	elif [[ -n ${text} ]] && [[ -z ${file} ]]; then
+		ssh -tq ${uname}@${acct_ip} "
+			cd /nas/wp/www/${envir}/${acct}/
+			grep -irn --exclude=*.{sql,png,pdf,csv,jpeg,jpg,gif,zip,tar,tar.gz} --exclude-dir=wp-includes --exclude-dir=wp-admin -e \"${text}\" * > /home/${uname}/find.${epoch}
+			cd
+			nl find.${epoch}
+			echo -e ${sshbr}
+			read -p \"Which File would you like to Open? Pick a number or X to exit. \" num
+			while [[ \$num = [0-9]* ]]; do
+				file=\$(awk -F\":\" '{print \$1}' find.${epoch} | sed -n \"\$num\"p)
+				line=\$(awk -F\":\" '{print \$2}' find.${epoch} | sed -n \"\$num\"p)
+					sudo nano +\${line} /nas/wp/www/${envir}/${acct}/\${file}
+				nl find.${epoch}
+				echo -e ${sshbr}
+				read -p \"Would you like to open another? X to finish \" num
+			done
+			exit"
+	elif [[ -n ${file} ]] && [[ -z ${text} ]]; then
+		ssh -tq ${uname}@${acct_ip} "
+			cd /nas/wp/www/${envir}/${acct}/
+			sudo find . -type f -iname \"*${file}*\" ! -path \".git/*\" ! -path \"./wp-admin/*\" ! -path \"./wp-includes/*\" > /home/${uname}/find.${epoch}
+			nl /home/${uname}/find.${epoch}
+			echo -e ${sshbr}
+			read -p \"Which File would you like to Open? Pick a number or X to exit. \" num
+			while [[ \$num = [0-9]* ]]; do
+				file=\$(sed -n \"\$num\"p /home/${uname}/find.${epoch})
+				sudo nano \${file}
+			echo -e \"\n${sshbr}\"
+				nl /home/${uname}/find.${epoch}
+			echo -e ${sshbr}
+				read -p \"Would you like to open another? X to finish \" num
+			done
+			exit"
+	fi
+	echo & ssh -tq ${uname}@${acct_ip} "rm -f find.${epoch} ack.${epoch}; exit"
+}
+#---------------------------------------------------------------------------------------------#
+
+## acct-count => Description: Count how many active accounts a customer has.
+# Usage: l2 acct-count <account>
+acct-count (){
+ssh -tq ${uname}@${acct_ip} "echo; sudo -v; count=0
+	for i in \$(sudo /nas/wp/ec2/cluster parent-child ${acct})
+		do [ -d /nas/wp/www/sites/\$i ] && let count=count+1; done
+	echo -e \"\\\n${sshbr}\\\n   \033[1;31m"${acct}"\033[1;000m Has \${count} Active Accounts on \$(hostname)\\\n\\\n${sshbr}\"
+	for i in \$(sudo /nas/wp/ec2/cluster parent-child ${acct})
+		do let count=count+1; done
+	echo -e \"\\\n   \033[1;31m"${acct}"\033[1;000m Has \${count} Accounts Active or De-Active.\\\n\\\n${sshbr}\"
+exit"
+}
+#---------------------------------------------------------------------------------------------#
+
+## htop => Description: Run htop on the customers server.
+# Usage: l2 htop <account>
+htop (){
+	ssh -tq ${uname}@${acct_ip} "htop; exit"
+	# echo && read -p "Would you like to run the hiload function too? ( X to exit ) - " q
+	# 	if [[ ${q} = [xX] ]]; then
+	# 		exit 0
+	# 	else
+	# 		hiload
+	# fi
+}
+#---------------------------------------------------------------------------------------------#
+
+## dns => Description: Get as much DNS Information as we can.
+# Usage: l2 dns <domain.com>
+dns (){
+	echo -e "\nDig the Domain for its DNS Records\n${br}"
+		dig ${acct} | grep -A 3 ";; ANSWER SECTION:"
+	echo -e "\nWhois to find their Name Servers\n${br}"
+		whois ${acct} | grep -iE "^domain\sname:|^name\sserver:" | sort
+		ttfb
+	echo -e "\nPinging the Domain 3 times\n${br}"
+		ping -c 3 ${acct}
+}
+#---------------------------------------------------------------------------------------------#
+
+## logs => Description: Print the NGINX or Apache Access Logs
+# Usage: l2 logs <account> -a -n -d <MM/DD>
+logs (){ local OPTIND
+while getopts ":and:" opt; do
+	case ${opt} in
+		a)
+			serv='apache2';;
+		d)
+			date=$OPTARG;;
+		n)
+			serv='nginx';;
+	esac
+done
+# Set a default service
+if [[ -z ${serv} ]]; then
+	serv='nginx'
+fi
+# Ensure uniform date input
+san_date ${date}
+# Hit up the logs if $date = today
+if [[ -z ${date} ]] || [[ ${date} = $(date +%Y%m%d) ]]; then
+	while true; do
+		ssh -tq ${uname}@${acct_ip} "echo & sudo -v
+			sudo less /var/log/${serv}/${acct}.access.log
+			echo -e \"All Done, Next up.\\\n\"
+			exit"
+	echo
+	read -p "Would you like to try the other Access Logs? ( Y / N ) " a
+		if [[ ${a} = [yY] ]]; then
+			if [[ ${serv} = [n]* ]]; then
+				serv="apache2"
+			elif [[ ${serv} = [a]* ]]; then
+				serv="nginx"
+			fi
+		else
+			echo & exit
+		fi
+	done
+# Hit up logs from the past
+else
+	today=$(date +%Y%m%d)
+	if [[ $(expr $(date -d ${today} +%s) / 86400 - 6) -gt $(expr $(date -d ${date} +%s) / 86400) ]]; then
+		echo; read -p "That date is too far back (6 day range). Try another? (MM/DD)  " date
+		# Ensure uniform date input
+		san_date ${date}
+	fi
+	read -p "Just Look or Save to file? " opt
+	while true; do
+		if [[ ${opt} = [sS]* ]]; then
+			opt="> ${acct}.${serv}.${date}.log | sudo mv ${acct}.${serv}.${date}.log /nas/wp/www/sites/${acct}/_wpeprivate/${acct}.${serv}.${date}.log"
+		else
+			opt="| less"
+		fi
+	log="for i in \$(sudo find /var/log/${serv}/ -maxdepth 1 -type f -iname \"${acct}.access.log.*\" -mtime +\${mintime} -mtime -\${maxtime}); do echo \${i}; done"
+	ssh -tq ${uname}@${acct_ip} "echo & sudo -v
+		mintime=\$(expr \$(expr \$(date +%s) - \$(date -d \"${date}\" +%s)) / 86400 - 2)
+		maxtime=\$(expr \$(expr \$(date +%s) - \$(date -d \"${date}\" +%s)) / 86400 + 1)
+				sudo zcat -f \$(${log}) | zgrep -i \"$(date -d ${date} +%d/%b)\" ${opt}
+				echo -e \"All Done, Next up.\\\n\"
+		exit"
+	echo
+	read -p "Would you like to try the other Access Logs? ( Y / N ) " a
+		if [[ ${a} = [yY] ]]; then
+			if [[ ${serv} = [n]* ]]; then
+				serv="apache2"
+			elif [[ ${serv} = [a]* ]]; then
+				serv="nginx"
+			fi
+		else
+			echo & exit
+		fi
+	done
+fi
+}
+#---------------------------------------------------------------------------------------------#
+
+## stage-backup => Description: Backup the Staging Site
+# Usage: l2 stage-backup <account>
+stage-backup (){
+	ssh -tq ${uname}@${acct_ip} "sudo -v; cd /nas/wp/www/staging/${acct}
+		mysqldump -u ${acct} -p\$(cat wp-config.php | grep \"define( 'DB_PASSWORD\" |  awk -F\"'\" '{print \$4}') snapshot_${acct} > mysql_$(date +%M).sql
+		if (( \$(df | grep /dev/xvda | awk '{print \$4}') > (\$(tar cf - * | wc -c) / 1024) * 10 )); then
+			sudo tar -cvzf /nas/wp/www/sites/${acct}/_wpeprivate/${acct}-staging-\$(date +%H_%M).tar.gz --exclude wp-admin --exclude wp-includes *
+			rm -f mysql_$(date +%M).sql
+		else echo -e \"\\\nIt seems that the size of this backup is larger than the Available Disk.\\\n\\\nDisk Space - \$(df -h | grep /dev/xvda | awk '{print \$4}')\\\n\\\nSize of the Backup ~ \$(expr \$(expr \$(tar cf - * | wc -c) / 1048576) \* 5)Mb\\\n\\\n\"
+		fi"
+}
+#---------------------------------------------------------------------------------------------#
+
+#################### USER NAME ####################
+## setuname => Description: Reset your SSH User Name.
+# Usage: l2 setuname
+setuname (){
+	read -p "What is your SSH User Name? " name
+		sudo sed -ie "s/^uname=.*/uname=${name}/g" ${0}
+}
+uname=bmoore_
+#---------------------------------------------------------------------------------------------#
+
+#################### UNIFORM DATE INPUT ####################
+san_date (){
+	# Lets ensure, uniform, and sanitize our Date input
+if [[ -n ${date} ]]; then
+# Make sure we have the current Month
+    if [[ ${date} =~ ^[0-9]{2}$ ]]; then
+    	date="$(date +%Y%m)${date}"
+    # Make sure we have the curent Year
+    elif [[ ${date} =~ ^[0-9]{2}([^a-zA-Z0-9])[0-9]{2}$ ]]; then 
+    	# Sanitize $date first
+    	if [[ $date =~ [/.] ]]; then
+    		date=$(echo ${date} | sed -e "s/[./]/\-/g")
+    	fi
+    	date="$(date +%Y)-${date}"
+    # If date is MMDD
+	elif [[ ${date} =~ ^[0-9]{4}$ ]]; then
+		date=$(date +%Y)${date}
+    fi
+    # Convert it to what we need
+    	date=$(date -d ${date} +%Y%m%d)
+fi
+}
+#---------------------------------------------------------------------------------------------#
+
+#################### Help ####################
+## help => Description: Print out some notes about how to use X function.
+# Usage: l2 help function
+help (){
+	fn=${2}
+	if [[ -z ${fn} ]]; then
+		echo -e "${br}Available tasks:\n"
+			grep -irn "^##\s" ${0} | awk '{$2="\033[1;31m"$2"\033[1;000m"; print $2}' | sort
+		echo -e "\n${br}"
+			read -p "Type function name that you wish to check ( X to exit ): " fn
+		echo
+	fi
+	if [[ ${fn} = [xX] ]]; then
+		exit 0
+	else
+		grep -A 1 -E "^##\s${fn}" ${0}
+		echo -e "\n${br}"
+	fi
+}
+#---------------------------------------------------------------------------------------------#
+
+#################### Get Account ####################
+account (){
+
+	# define the accnt variable
+acct=${2}
+
+	# Was the account defined properly?
+if [[ -z ${2} ]] || [[ ${2} == -* ]]; then
+	if [[ ${1} = dns ]] || [[ ${1} = ttfb ]]; then
+		echo && read -p "What Website are we working with? " acct
+	else
+		echo && read -p "What Account are we working with? " acct
+	fi
+fi
+
+	# Check if it's a pod
+if [[ ${acct} =~ ^[0-9]{3,5}$ ]]; then
+	acct="pod-${acct}"
+	pod=${acct}
+elif [[ ${acct} =~ ^pod-[0-9]{3,5}$ ]]; then
+	acct=${acct}
+	pod=${acct}
+fi
+	#acct_ip=$(dig ${acct}.wpengine.com | grep -A 3 ";; ANSWER SECTION:" | egrep -m 1 "(([0-9]{1,3}\.){3}[0-9]{1,3})" | awk '{print $5}')
+	acct_ip=$(dig +short ${acct}.wpengine.com)
+}
+#---------------------------------------------------------------------------------------------#
+
+#################### Update ####################
+## update => Description: Get the latest version of this script.
+# Usage: l2 update
+update (){
+	if [[ $(uname) = [lL]inux ]]; then
+		sudo -v; sudo curl https://raw.githubusercontent.com/bmo-tv/Scripts/master/l2 -o /usr/sbin/l2
+		sudo chown root:root /usr/sbin/l2; sudo chmod +x /usr/sbin/l2
+		echo; l2 setuname; echo
+	else
+		sudo -v; sudo curl -k -3 https://raw.githubusercontent.com/bmo-tv/Scripts/master/l2 -o /usr/sbin/l2
+		sudo chown root:wheel /usr/sbin/l2; sudo chmod +x /usr/sbin/l2
+		echo; l2 setuname; echo
+	fi
+}
+#---------------------------------------------------------------------------------------------#
+
+#################### MENU ####################
+menu (){
+while [[ -z ${cmd} ]]; do
+	echo -e "\n${br}Available tasks:\n"
+	grep "^##\s" ${0} | awk '{$1=""; $2="\033[1;31m"$2"\033[1;000m"; print}' | sort
+	echo -e ${br}
+	read -p "Type function name that you wish to use ( X to exit ): " cmd
+	echo
+	if [[ ${cmd} = [xX] ]]; then
+		exit 0
+	else
+		if [[ ! ${cmd} =~ ('help'|setuname|update) ]]; then
+			account
+		fi
+		declare -F ${cmd} &>/dev/null && echo && ${cmd} && echo && exit 0 || echo -e "${cmd}\nYou Didn't do it right! Try again.\n"; cmd=""
+	fi
+done
+}
+#---------------------------------------------------------------------------------------------#
+
+#################### Set Global Vars ####################
+
+br="++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n"
+sshbr="++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\\\n"
+epoch=$(date +%s)
+#---------------------------------------------------------------------------------------------#
+
+#################### Set Username ####################
+
+if [[ -z ${uname} ]]; then
+	setuname
+	exit 0
+fi
+#---------------------------------------------------------------------------------------------#
+
+#################### Run It ####################
+if [[ -n ${1} ]]; then
+	cmd=${1}
+	if [[ ! ${cmd} =~ (setuname|update|'help') ]]; then
+		echo -e "\nYour current username is set to: \033[1;31m"${uname}"\033[1;000m"
+		account ${cmd} ${2}
+		shift 2
+	fi	
+	echo
+	declare -F ${cmd} &>/dev/null && ${cmd} $* && exit 0 ||
+		echo -e "\n\033[1;31m"Looks like you entered the wrong function."\033[1;000m\n\nUsage is: l2 <function> <account> <optional argument>\n" && menu
+else
+	echo -e "\nUsage is: l2 <function> <account> <optional argument>\n"
+	menu
+fi
+#---------------------------------------------------------------------------------------------#
